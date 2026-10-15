@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Poker calculator · Ryan’s Online Poker</title><meta name="description" content="Enter your poker hand and table conditions to estimate win chances and a suggested move."><link rel="stylesheet" href="style.css?v=c38a008d0ae1"><link rel="stylesheet" href="interface.css?v=c38a008d0ae1"><link rel="stylesheet" href="calculator.css?v=c38a008d0ae1"><link rel="stylesheet" href="welcome.css?v=c38a008d0ae1"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Poker calculator · Ryan’s Online Poker</title><meta name="description" content="Enter your poker hand and table conditions to estimate win chances and a suggested move."><link rel="stylesheet" href="style.css?v=c38a008d0ae1"><link rel="stylesheet" href="interface.css?v=c38a008d0ae1"><link rel="stylesheet" href="calculator.css?v=c38a008d0ae1"><link rel="stylesheet" href="welcome.css?v=c38a008d0ae1"><link rel="stylesheet" href="room.css?v=5d187b62f3c4"></head>
 <body class="calculator-page">
-<header class="app-header"><a class="brand" href="index.html"><span aria-hidden="true">♠</span>RYAN’S ONLINE POKER</a><nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="play.html">Solo</a><a href="friends.html">Play with friends</a><a href="calculator.html" aria-current="page">Calculator</a><a href="arena.html">AI Arena</a></nav><span class="header-meta">POKER LAB</span></header>
+<header class="app-header"><a class="brand" href="index.html"><span aria-hidden="true">♠</span>Ryan’s Online Poker</a><nav class="app-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="play.html">Solo</a><a href="friends.html">Play with friends</a><a href="calculator.html" aria-current="page">Calculator</a><a href="arena.html">AI Arena</a></nav><span class="header-meta">POKER LAB</span></header>
 <main class="simple-calculator">
-<div class="calculator-heading"><div><h1>Poker calculator</h1><p>Enter your hand, then calculate.</p></div><button id="loadExample" type="button">Load example</button></div>
+<div class="calculator-heading"><div><h1>Poker calculator</h1><p>Got a hand in mind? Lay out the cards and see how it looks.</p></div><button id="loadExample" type="button">Load example</button></div>
 <form id="calculatorForm" class="lab-form">
 <table class="input-table"><caption>Your hand</caption><tbody>
 <tr><th scope="row">Your cards</th><td><div id="holeCards" class="card-inputs"></div></td></tr>
@@ -27,7 +27,7 @@
 <div class="calculator-submit"><button id="calculate" class="calculate-button" type="submit">Calculate hand</button><button id="cancelCalculation" type="button" hidden>Cancel</button></div>
 <p id="calculationStatus" role="status" aria-live="polite"></p>
 </form>
-<section class="table-results" aria-label="Hand analysis"><h2>Your result</h2><p id="emptyResult">Your chances and suggested move will appear here.</p><div id="results" hidden>
+<section class="table-results" aria-label="Hand analysis"><h2>Your result</h2><p id="emptyResult">Choose your cards above, or load an example to try a hand.</p><div id="results" hidden>
 <table class="result-table"><caption class="sr-only">Hand calculation results</caption><tbody>
 <tr class="recommended-row"><th scope="row">Suggested move</th><td><strong id="suggestedAction"></strong><small id="betExplanation"></small></td></tr>
 <tr><th scope="row">Chance of winning</th><td><strong id="winValue"></strong></td></tr>

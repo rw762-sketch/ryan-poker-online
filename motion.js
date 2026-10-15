@@ -2,11 +2,23 @@
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const running = new Set();
 let generation = 0;
+let displayedPot = null;
+
+// A preference change should settle the current hand immediately, too.
+reducedMotion.addEventListener('change', () => {
+  if (!reducedMotion.matches) return;
+  generation++;
+  for (const animation of running) animation.cancel();
+  running.clear();
+  document.querySelectorAll('.moving-chips').forEach(element => element.remove());
+  const pot = document.getElementById('pot');
+  if (pot && displayedPot !== null) pot.textContent = displayedPot.toLocaleString();
+});
 
 function animate(element, frames, options) {
   if (!element || reducedMotion.matches || !element.animate) return;
   const animation = element.animate(frames, {
-    duration: 460,
+    duration: 380,
     easing: 'cubic-bezier(.2,.75,.25,1)',
     ...options,
   });
@@ -39,7 +51,7 @@ function transfer(from, to, amount, delay = 0) {
     { transform: 'translate(-50%, -50%) scale(.65)', opacity: 0 },
     { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: .15 },
     { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.7)`, opacity: 0 },
-  ], { duration: 650, delay, fill: 'both' });
+  ], { duration: 500, delay, fill: 'both' });
   if (animation) animation.finished.catch(() => {}).finally(() => token.remove());
   else token.remove();
 }
@@ -72,6 +84,7 @@ export function tableSnapshot(game) {
 }
 
 export function animateTable(before, after) {
+  displayedPot = after.pot;
   generation++;
   for (const animation of running) animation.cancel();
   running.clear();
@@ -89,7 +102,7 @@ export function animateTable(before, after) {
         animate(card, [
           { opacity: 0, transform: `translate(${origin.x - destination.x}px, ${origin.y - destination.y}px) rotate(-18deg) scale(.45)` },
           { opacity: 1, transform: 'translate(0, 0) rotate(0) scale(1)' },
-        ], { duration: 520, delay: (cardIndex * 4 + index) * 75, fill: 'backwards' });
+        ], { duration: 380, delay: (cardIndex * 4 + index) * 45, fill: 'backwards' });
       });
     });
   }
@@ -99,7 +112,7 @@ export function animateTable(before, after) {
     animate(card, [
       { opacity: 0, transform: 'perspective(700px) translateY(-30px) rotateY(90deg) scale(.9)' },
       { opacity: 1, transform: 'perspective(700px) translateY(0) rotateY(0) scale(1)' },
-    ], { duration: 600, delay: index * 140, fill: 'backwards' });
+    ], { duration: 380, delay: index * 90, fill: 'backwards' });
   });
 
   if (!newHand) {
@@ -122,9 +135,9 @@ export function animateTable(before, after) {
           seat.classList.add('winner');
           animate(seat.querySelector('.nameplate'), [
             { transform: 'scale(1)', boxShadow: '0 0 0 0 #e3bb7200' },
-            { transform: 'scale(1.08)', boxShadow: '0 0 0 12px #e3bb7230', offset: .45 },
+            { transform: 'scale(1.03)', boxShadow: '0 0 0 12px #e3bb7230', offset: .45 },
             { transform: 'scale(1)', boxShadow: '0 0 0 22px #e3bb7200' },
-          ], { duration: 1000, delay: 900 });
+          ], { duration: 600, delay: 300 });
         }
         if (index !== 0 && !player.folded && after.stage === 4) {
           seat.querySelectorAll('.card').forEach((card, cardIndex) => {

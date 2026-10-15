@@ -1,0 +1,214 @@
+/* A quiet, warm room. Loaded last so page-specific geometry stays intact. */
+:root {
+  --bg: #211e1a;
+  --surface: #2a2721;
+  --surface-raised: #332f27;
+  --border: #514a3e;
+  --text: #f4eddf;
+  --muted: #c0b5a3;
+  --gold: #e4bd7c;
+  --accent: #b8d0b5;
+  --room-ease: cubic-bezier(.22,.7,.25,1);
+}
+body { background: radial-gradient(ellipse at 50% 0,#383125 0,transparent 65%),var(--bg); font-family: 'Avenir Next', Avenir, 'Segoe UI', sans-serif; }
+.app-header { background: #211e1af2; border-color: #514a3e; }
+.brand { font-family: Georgia, 'Times New Roman', serif; font-size: 18px; font-weight: 400; letter-spacing: -.3px; max-width: 250px; }
+.brand span { color: var(--gold); font-size: 26px; }
+.app-nav a { font-weight: 500; font-size: 14px; }
+.app-nav a[aria-current=page] { border-color: var(--gold); }
+.header-meta, .eyebrow { letter-spacing: 1.4px; }
+h1, .welcome-heading h1, .friends-title h1, .calculator-heading h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: -1px; line-height: 1.15; }
+h1, .friends-title h1 { font-size: clamp(32px,4vw,44px); }
+.calculator-heading h1 { font-size: clamp(30px,4vw,40px); }
+main { padding-top: 36px; }
+.topline { margin-bottom: 26px; }
+button, select, input { color: var(--text); }
+button:not(:disabled), a, select, input, summary { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 220ms var(--room-ease); }
+button:not(:disabled):active { transform: translateY(1px); }
+:is(button,a,input,select,summary):focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+.difficulty-option:has(input:focus-visible) { outline: 3px solid var(--gold); outline-offset: 3px; }
+.icon, .close { min-width: 44px; min-height: 44px; }
+.multiplayer-button, .page-button, .lobby-table button, #multiplayerForm button, .room-bar button,
+.calculator-heading button, #cancelCalculation, .arena-controls button, .arena-controls select {
+  background: #38372c; border-color: #6d6855; border-radius: 9px; color: var(--text); min-height: 44px;
+}
+:is(.multiplayer-button,.page-button,.lobby-table button,#multiplayerForm button,.room-bar button,.calculator-heading button,.arena-controls button):not(:disabled):hover { background: #484635; border-color: var(--gold); }
+#multiplayerForm button.primary, .arena-controls button.primary, .calculate-button, .drinks-footer .primary { background: var(--gold); color: #282117; border-color: var(--gold); }
+#multiplayerForm button.primary:hover, .arena-controls button.primary:hover, .calculate-button:hover { background: #f1d29b; color: #282117; }
+#multiplayerForm input, #connectionMode, .lab-form input, .lab-form select:not(.card-picker) { background: #211f1a; border: 1px solid #736a56; border-radius: 7px; color: var(--text); }
+input::placeholder { color: #b2a792; opacity: 1; }
+.connection-notice { background: #373025; color: var(--text); }
+.lobby-setup, #onlineLobby.lobby-directory, .lobby-directory, .decision-panel, .arena-panel { background: var(--surface); border-color: var(--border); box-shadow: 0 8px 24px #100e0b20; border-radius: 14px; }
+.friends-layout h2, .decision-panel h2, .arena-panel h2, .table-results h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 400; }
+.online-players li, .lobby-table { background: #343129; border: 1px solid var(--border); }
+.room-bar { background: #30362b; border-color: #747455; }
+.difficulty-panel { background: #29271f; border-color: var(--border); }
+.difficulty-options { background: #201f19; border-color: var(--border); }
+.difficulty-option:hover { background: #34362b; }
+.difficulty-option:has(input:checked) { background: #3c4735; border-color: #849674; }
+.difficulty-option:has(input:checked) .difficulty-title { color: #e4edda; }
+.difficulty-description { color: #c0b5a3; }
+.stakes { border-color: var(--border); background: #2a2721; }
+.rail { background: linear-gradient(135deg,#65503b,#372c23 50%,#59432e); border-color: #92734b; box-shadow: 0 18px 34px #100e0b66,inset 0 0 0 8px #29231e,inset 0 0 0 10px #98764970; }
+.felt { background: radial-gradient(ellipse at 45% 30%,#376448,#1c422f 75%); border-color: #b9cd9455; box-shadow: inset 0 0 55px #071e1790; }
+.felt:after { border-color: #d8d8ad2b; }
+.table-watermark { font-family: Georgia,serif; font-style: italic; color: #ede4c91c; }
+.table-page .arena { height: 555px; }
+@media(min-width:701px) { .table-page .board-area { inset: 108px 0 0; gap: 12px; } }
+@media(max-width:700px) { .table-page .arena { height: 540px; } }
+.nameplate { background: #292a22; border-color: #746d55; box-shadow: 0 5px 12px #100e0b44; }
+.avatar { background: #414835; color: #f1e3c4; border-color: #85876b; font-family: Georgia,serif; }
+.seat.active .avatar { animation: none; border-color: var(--gold); }
+.seat.active .nameplate { border-color: var(--gold); box-shadow: 0 0 0 3px #e4bd7c25,0 4px 14px #0003; }
+.seat.winner .nameplate { background: #414d32; }
+.card { background: #fcf3df; color: #253b2d; border: 1px solid #e7ddc4; box-shadow: 0 3px 2px #0002,0 6px 12px #0003; }
+.card.red { color: #a13830; }
+.card.back { background: repeating-linear-gradient(45deg,#5e3931 0 2px,#70463b 2px 4px); border: 3px solid #e6d6b5; }
+.card.empty { background: #173a2860; border: 1px solid #dddec137; box-shadow: inset 0 1px 5px #0002; }
+.player-action, .street, .pot-label { color: #d2ddc5; }
+.console { background: #2b2a22; border-color: #615b47; border-radius: 14px; box-shadow: 0 8px 24px #100e0b20; }
+.turn-info>.eyebrow { color: var(--gold); }
+.actions button { background: #414434; border-color: #7b7d60; color: var(--text); }
+.actions button:not(:disabled):hover { background: #52573e; border-color: var(--gold); }
+.actions button.fold { color: #e2d8c6; }
+.actions button.primary { background: var(--gold); color: #282117; border-color: var(--gold); }
+.actions button.primary:not(:disabled):hover { background: #f1d29b; }
+.actions button.all-in { background: #7c3e2d; border-color: #da9971; color: #fff1dc; }
+.seat-drink { background: #353528; color: var(--gold); border-color: #928165; }
+.gift-notice { color: #c0b5a3; }
+dialog, #drinksDialog { background: #2a2721; color: var(--text); border-color: #8c7a59; box-shadow: 0 24px 80px #0008; }
+dialog::backdrop { background: #100e0bc4; }
+.drink-recipient { background: #393c2e; }
+.drink-card { background: #343027; border-color: #625844; }
+.drink-card:has(input:checked) { background: #49412d; }
+.drink-note { color: #c0b5a3; }
+.input-table, .result-table { background: #2a2721; border-color: var(--border); }
+.input-table th, .result-table th { color: #e1d6c3; }
+.input-table th, .input-table td, .result-table th, .result-table td { padding-block: 15px; }
+.input-table caption { font-family: Georgia,serif; font-size: 23px; font-weight: 400; padding-bottom: 16px; }
+.simple-calculator .card-picker { background: #fcf3df; color: #253b2d; border-color: #d1b98c; box-shadow: 0 2px 3px #0002; height: 48px; }
+.simple-calculator .card-picker:has(option[value=""]:checked) { color: #d4c7af; background: #343027; border-color: #a39271; }
+.result-table .recommended-row, .decision-panel .decision-reason, .move-timeline button[aria-pressed=true] { background: #3a4430; color: #e1ebd9; }
+.move-timeline button { background: #24221c; }
+.move-timeline button:hover { background: #353a2c; }
+.home-page { --text: #302c22; --muted: #6b6252; --border: #d0c3ac; background: #f2eada; color: var(--text); color-scheme: light; }
+.home-page .app-header { background: #f2eada; border-color: #d8cbb5; }
+.home-page .brand span { color: #815638; }
+.home-page .app-nav a[aria-current=page] { border-color: #815638; }
+.home-page :is(a,button):focus-visible { outline-color: #815638; }
+.welcome-main { max-width: 1100px; padding-top: clamp(32px,6vh,64px); }
+.welcome-heading { margin-bottom: 34px; max-width: 720px; }
+.welcome-heading .eyebrow { color: #7b5437; font-weight: 500; letter-spacing: 1.5px; }
+.welcome-heading h1 { font-size: clamp(44px,6vw,72px); letter-spacing: -2.5px; }
+.welcome-heading>p:last-child { font-size: 18px; line-height: 1.6; max-width: 540px; }
+.play-choices { gap: 24px; }
+.play-choice { position: relative; overflow: hidden; padding: 30px; border-radius: 12px; background: #284334; border-color: #52664a; box-shadow: 0 7px 0 #d7ccb6,0 14px 24px #45361c13; color: #faf0da; }
+.play-choice:hover { background: #304e3b; border-color: #6f835c; }
+.solo-choice { background: #624434; border-color: #8b6b4d; }
+.solo-choice:hover { background: #70503c; border-color: #ad8e66; }
+.play-choice h2 { font-family: Georgia,serif; font-size: clamp(32px,4vw,45px); font-weight: 400; line-height: 1.12; letter-spacing: -.8px; margin: 42px 0 16px; max-width: 290px; }
+.play-choice h2 br { display: none; }
+.choice-label, .solo-choice .choice-label { color: #ead5ad; font-size: 11px; font-weight: 500; letter-spacing: 1.5px; }
+.play-choice p { color: #eee2cb; max-width: 320px; font-size: 16px; line-height: 1.65; }
+.choice-details, .solo-choice .choice-details { color: #dfd1b7; font-size: 13px; }
+.choice-action { border-color: #e5d5b333; color: #f4d5a0; font-size: 16px; margin-top: 26px; }
+.choice-action>span { transition: transform 220ms var(--room-ease); }
+.choice-cards { position: absolute; top: 26px; right: 28px; width: 65px; height: 60px; pointer-events: none; }
+.choice-cards i { position: absolute; display: grid; place-items: center; width: 38px; height: 52px; background: #f7ecd5; border: 1px solid #e7d5af; border-radius: 4px; color: #284334; font: 26px Georgia,serif; font-style: normal; box-shadow: 0 3px 5px #0003; transform: rotate(-14deg); }
+.choice-cards i+i { left: 23px; top: 5px; color: #963f32; transform: rotate(12deg); }
+.solo-choice .choice-cards i { background: repeating-linear-gradient(45deg,#e2c69e 0 2px,#6e4937 2px 4px); border: 3px solid #f0dfbd; color: transparent; }
+.practice-links { margin-top: 30px; gap: 24px; }
+.practice-links>a { border: 0; border-bottom: 1px solid #cbbc9f; border-radius: 0; padding: 18px 0; font-weight: 400; }
+.practice-links>a:hover { background: transparent; border-color: #815638; }
+.practice-links strong { font-weight: 500; }
+.welcome-main footer { margin-top: 20px; color: #6b6252; }
+footer a { color: var(--muted); text-underline-offset: 4px; }
+@media(hover:hover) and (prefers-reduced-motion:no-preference) {
+  .play-choice:hover { transform: translateY(-3px); box-shadow: 0 10px 0 #d7ccb6,0 18px 30px #45361c18; }
+  .play-choice:hover .choice-action>span { transform: translateX(4px); }
+}
+@media(prefers-reduced-motion:no-preference) {
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: room-out 110ms ease-out both; }
+  ::view-transition-new(root) { animation: room-in 220ms var(--room-ease) both; }
+  html:active-view-transition { pointer-events: auto; }
+  html::view-transition { pointer-events: none; }
+  dialog[open] { animation: room-in 180ms var(--room-ease); }
+  @keyframes room-in { from { opacity: .5; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  @keyframes room-out { to { opacity: .6; } }
+}
+@media(max-width:760px) {
+  .brand { font-size: 18px; max-width: 220px; }
+  .app-nav { column-gap: 20px; }
+  main { padding-top: 26px; }
+  .welcome-heading h1 { letter-spacing: -1.5px; }
+  .welcome-heading>p:last-child { font-size: 16px; }
+  .play-choice { padding: 25px; }
+  .choice-cards { right: 22px; top: 22px; transform: scale(.85); transform-origin: top right; }
+  .topline { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .console { align-items: stretch; }
+}
+@media(max-width:520px) {
+  .play-choices, .practice-links { gap: 22px; }
+  .play-choice h2 { margin-top: 32px; font-size: 35px; }
+  .play-choice p { max-width: 275px; }
+  .choice-cards { transform: scale(.75); }
+  .choice-action { margin-top: 20px; }
+  .welcome-main footer { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .practice-links { gap: 0; }
+  .app-header { gap: 10px 12px; }
+  .app-nav { gap: 0 17px; }
+  .app-nav a { font-size: 13px; }
+  .header-meta { font-size: 10px; }
+  .brand { max-width: 190px; }
+  .input-table th,.input-table td,.result-table th,.result-table td { padding: 12px 10px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+
+/* A tabletop, rather than a grid of dashboard tiles. */
+.brand span { display: inline-grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: #8e755322; }
+.play-choices { gap: 48px; }
+.play-choice, .play-choice:hover { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 12px 8px 22px; color: #302c22; overflow: visible; transform: none; }
+.solo-choice { margin-top: 36px; }
+.choice-cards { position: relative; top: auto; right: auto; order: -1; display: block; width: 100%; height: 175px; margin: 8px 0 32px; border-radius: 50%; background: radial-gradient(ellipse at 45% 35%,#436b4b,#2b4938); border: 8px solid #65513a; outline: 1px solid #b29a73; box-shadow: inset 0 0 0 2px #c7bb8150,0 10px 0 #d6c9af,0 18px 24px #63503515; transform: rotate(-3deg); transform-origin: center; transition: transform 300ms var(--room-ease); }
+.solo-choice .choice-cards { border-radius: 45% 52% 45% 49%; background: radial-gradient(ellipse at 45% 35%,#997254,#76533e); border-color: #614b38; transform: rotate(3deg); }
+.choice-cards i { width: 62px; height: 88px; font-size: 42px; left: calc(50% - 48px); top: 24px; border-radius: 7px; transform: rotate(-16deg); }
+.choice-cards i+i { left: calc(50% - 4px); top: 30px; transform: rotate(12deg); }
+.choice-cards::before, .choice-cards::after { content: '♠'; position: absolute; display: grid; place-items: center; width: 42px; height: 42px; left: 17%; top: 85px; border: 4px dashed #f7e8c8; border-radius: 50%; outline: 2px solid #b18a52; background: #d4ad70; color: #634c2b; font: 24px Georgia,serif; box-shadow: 0 4px 0 #9c794c; }
+.choice-cards::after { content: '♥'; left: auto; right: 15%; top: 49px; width: 32px; height: 32px; background: #c2866f; color: #6e3e31; outline-color: #976b51; box-shadow: 0 4px 0 #976b51; }
+.play-choice h2 { font-size: clamp(32px,3.5vw,42px); margin: 12px 0 14px; max-width: none; }
+.choice-label, .solo-choice .choice-label { color: #80543a; }
+.play-choice p { color: #6b6252; max-width: 360px; }
+.choice-details, .solo-choice .choice-details { color: #6b6252; }
+.choice-action { border-color: #c6b69b; color: #3c5038; margin-top: 20px; padding-top: 14px; }
+.choice-action>span { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #98a187; border-radius: 50%; font-size: 23px; }
+.solo-choice .choice-action { color: #7b4e35; }
+.solo-choice .choice-action>span { border-color: #bba184; }
+.nameplate { border-radius: 30px; }
+.multiplayer-button, .page-button, .lobby-table button, #multiplayerForm button, .arena-controls button, .actions button, .calculator-heading button, .calculate-button { border-radius: 28px; }
+.difficulty-options { border: 0; background: transparent; padding: 0; gap: 8px; }
+.difficulty-option { border-radius: 20px; border-color: #5a5944; }
+.console { border-radius: 28px; }
+#onlineLobby.lobby-directory { background: transparent; box-shadow: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+.lobby-setup { border-radius: 38px 38px 20px 20px; }
+.decision-panel, .arena-panel { background: transparent; box-shadow: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+@media(hover:hover) and (prefers-reduced-motion:no-preference) {
+  .play-choice:hover { box-shadow: none; transform: none; }
+  .play-choice:hover .choice-cards { transform: rotate(0) translateY(-3px); }
+}
+@media(max-width:760px) {
+  .play-choices { gap: 28px; }
+  .choice-cards { height: 150px; }
+  .choice-cards::before { left: 10%; }
+  .choice-cards::after { right: 8%; }
+}
+@media(max-width:520px) {
+  .play-choice, .play-choice:hover { padding: 8px 4px 18px; }
+  .solo-choice { margin-top: 0; }
+  .choice-cards { transform: rotate(-3deg); margin-bottom: 28px; height: 150px; }
+  .solo-choice .choice-cards { transform: rotate(3deg); }
+  .play-choice h2 { margin-top: 10px; }
+}
