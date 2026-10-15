@@ -127,15 +127,11 @@ footer a { color: var(--muted); text-underline-offset: 4px; }
   .play-choice:hover { transform: translateY(-3px); box-shadow: 0 10px 0 #d7ccb6,0 18px 30px #45361c18; }
   .play-choice:hover .choice-action>span { transform: translateX(4px); }
 }
+/* Content enters gently without capturing or blocking navigation inputs. */
 @media(prefers-reduced-motion:no-preference) {
-  @view-transition { navigation: auto; }
-  ::view-transition-old(root) { animation: room-out 110ms ease-out both; }
-  ::view-transition-new(root) { animation: room-in 220ms var(--room-ease) both; }
-  html:active-view-transition { pointer-events: auto; }
-  html::view-transition { pointer-events: none; }
+  main { animation: room-in 220ms var(--room-ease); }
   dialog[open] { animation: room-in 180ms var(--room-ease); }
   @keyframes room-in { from { opacity: .5; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-  @keyframes room-out { to { opacity: .6; } }
 }
 @media(max-width:760px) {
   .brand { font-size: 18px; max-width: 220px; }
@@ -211,4 +207,14 @@ footer a { color: var(--muted); text-underline-offset: 4px; }
   .choice-cards { transform: rotate(-3deg); margin-bottom: 28px; height: 150px; }
   .solo-choice .choice-cards { transform: rotate(3deg); }
   .play-choice h2 { margin-top: 10px; }
+}
+
+/* On phones, separate the opponent, board and private-hand bands vertically. */
+@media(max-width:700px) {
+  .table-page .arena { height: 620px; }
+  .table-page .seat-1, .table-page .seat-3 { top: 112px; }
+  .table-page .board-area { inset: 215px 0 0; }
+  .watch-table .arena { height: 580px; }
+  .watch-table .seat-1, .watch-table .seat-3 { top: 112px; }
+  .watch-table .board-area { inset: 215px 0 0; }
 }
