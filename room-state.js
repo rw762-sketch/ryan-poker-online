@@ -1,8 +1,8 @@
-import { PlayerMemory } from './player-memory.js?v=c38a008d0ae1';
-import { playerOutcome } from './player-outcome.js?v=c38a008d0ae1';
-import { Poker } from './engine.js?v=c38a008d0ae1';
+import { PlayerMemory } from './player-memory.js?v=94c0c2e8da39';
+import { playerOutcome } from './player-outcome.js?v=94c0c2e8da39';
+import { Poker } from './engine.js?v=94c0c2e8da39';
 
-import { botObservation, chooseBotAction } from './ai.js?v=c38a008d0ae1';
+import { botObservation, chooseBotAction } from './ai.js?v=94c0c2e8da39';
 
 export const MAX_PLAYERS = 4;
 export const TURN_MS = 45000;

@@ -1,4 +1,4 @@
-import { describeHand, compareHandsText } from './hand-description.js?v=c38a008d0ae1';
+import { describeHand, compareHandsText } from './hand-description.js?v=94c0c2e8da39';
 export const labels=['High card','One pair','Two pair','Three of a kind','Straight','Flush','Full house','Four of a kind','Straight flush'];
 export function compare(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){let d=(a[i]||0)-(b[i]||0);if(d)return d;}return 0;}
 function five(cards){const ranks=cards.map(c=>c.r).sort((a,b)=>b-a),counts={};ranks.forEach(r=>counts[r]=(counts[r]||0)+1);const g=Object.entries(counts).map(([r,n])=>({r:+r,n})).sort((a,b)=>b.n-a.n||b.r-a.r);const flush=cards.every(c=>c.s===cards[0].s);let straight=0;if(g.length===5){if(ranks[0]-ranks[4]===4)straight=ranks[0];else if(ranks.join()==='14,5,4,3,2')straight=5;}if(flush&&straight)return[8,straight];if(g[0].n===4)return[7,g[0].r,g[1].r];if(g[0].n===3&&g[1].n===2)return[6,g[0].r,g[1].r];if(flush)return[5,...ranks];if(straight)return[4,straight];if(g[0].n===3)return[3,...g.map(x=>x.r)];if(g[0].n===2&&g[1].n===2)return[2,...g.map(x=>x.r)];if(g[0].n===2)return[1,...g.map(x=>x.r)];return[0,...ranks];}
