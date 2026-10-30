@@ -2058,3 +2058,108 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
 @media (max-width: 700px) {
   .seat-1 .stack-pile, .seat-2 .stack-pile { right: auto; left: calc(50% + 32px); bottom: calc(100% + 40px); }
 }
+
+/* ===== Lobby: cute and quick ===== */
+.friends-title h1 { text-shadow: 3px 3px 0 var(--neon-pink), -2px -2px 0 #3cf2ff55; }
+.lobby-setup form, .friends-layout #multiplayerForm { display: grid; gap: 10px; }
+#nickname, #joinCode {
+  font-family: var(--display);
+  font-size: 20px;
+  border-radius: 16px;
+  padding: 14px 52px 14px 16px;
+  background: #0b0717;
+  border: 2px solid var(--line-strong);
+  transition: border-color 200ms ease, box-shadow 300ms ease;
+}
+#nickname:focus, #joinCode:focus { border-color: var(--neon-cyan); box-shadow: 0 0 0 4px #3cf2ff22, 0 0 22px #3cf2ff33; outline: none; }
+#joinCode { font-family: var(--hud); letter-spacing: .3em; text-transform: uppercase; padding-right: 16px; }
+.roll-name {
+  justify-self: end;
+  margin: -58px 8px 12px 0;
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  border: 0;
+  background: #2a1f48;
+  font-size: 22px;
+  line-height: 1;
+  z-index: 1;
+}
+.roll-name:hover { background: #3a2c63; rotate: 18deg; }
+.roll-name:active { rotate: 200deg; transition: rotate 300ms var(--spring-bouncy); }
+#createRoom, #joinRoom { min-height: 52px; font-family: var(--display); font-weight: 700; font-size: 18px; border-radius: 16px; }
+#createRoom.primary, #joinRoom.primary { background: var(--neon-pink); color: #fff; box-shadow: 0 5px 0 #a12765, 0 0 22px #ff4fa355; border: 0; }
+#enterLobby { display: none; }
+.join-divider { font-family: var(--hand); font-size: 22px; color: var(--muted); text-align: center; }
+.invite-banner {
+  margin: 0 0 6px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #ff4fa333, #3cf2ff22);
+  box-shadow: inset 0 0 0 1px #ff4fa366;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+}
+.invite-banner::before { content: "💌 "; }
+
+/* online players as little blobs */
+.online-players { display: flex; flex-wrap: wrap; gap: 14px 18px; padding: 0; list-style: none; }
+.online-players li, .friends-layout .online-players li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border: 0;
+  padding: 0;
+  background: none;
+  min-width: 70px;
+}
+.online-players li strong { font-family: var(--display); font-size: 14px; }
+.online-players li span { font-family: var(--hud); font-size: 11px; color: var(--muted); }
+.lobby-blob {
+  position: relative;
+  width: 40px; height: 36px;
+  border-radius: 48% 52% 44% 56% / 58% 56% 44% 42%;
+  background: radial-gradient(circle at 35% 30%, hsl(var(--hue) 100% 82%), hsl(var(--hue) 85% 62%) 60%, hsl(var(--hue) 70% 45%));
+  box-shadow: 0 5px 0 hsl(var(--hue) 60% 28%);
+}
+.lobby-blob i { position: absolute; top: 40%; width: 5px; height: 7px; border-radius: 50%; background: #1b1233; }
+.lobby-blob i:first-child { left: 30%; } .lobby-blob i:nth-child(2) { right: 30%; }
+.lobby-blob u { position: absolute; left: 50%; top: 62%; width: 8px; height: 3px; translate: -50% 0; border: 2px solid #1b1233; border-top: 0; border-radius: 0 0 8px 8px; }
+@media (prefers-reduced-motion: no-preference) {
+  .lobby-blob { animation: hop 2.4s var(--spring-bouncy) infinite; }
+  .online-players li:nth-child(2n) .lobby-blob { animation-delay: .6s; }
+  .online-players li:nth-child(3n) .lobby-blob { animation-delay: 1.3s; }
+}
+
+/* open tables as tiny neon tables */
+.public-rooms { display: grid; gap: 12px; }
+.lobby-table, .friends-layout .lobby-table {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 20px;
+  background: #ffffff07;
+  transition: background 200ms ease;
+}
+.lobby-table:hover { background: #ffffff0d; }
+.lobby-table strong { display: block; font-size: 18px; }
+.lobby-table span { font-family: var(--hud); font-size: 12px; color: var(--muted); }
+.mini-table {
+  position: relative;
+  width: 74px; height: 40px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at 50% 40%, var(--felt-hi), var(--felt-lo));
+  box-shadow: 0 0 0 2px var(--neon-pink), 0 0 12px #ff4fa366;
+}
+.mini-table i { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #2a1f48; border: 1.5px solid var(--line-strong); }
+.mini-table i.taken { background: var(--neon-cyan); border-color: #fff; box-shadow: 0 0 8px var(--neon-cyan); }
+.mini-table i:nth-child(1) { left: 32px; bottom: -6px; } .mini-table i:nth-child(2) { left: -4px; bottom: 4px; }
+.mini-table i:nth-child(3) { left: 8px; top: -6px; } .mini-table i:nth-child(4) { left: 32px; top: -7px; }
+.mini-table i:nth-child(5) { right: 8px; top: -6px; } .mini-table i:nth-child(6) { right: -4px; bottom: 4px; }
+.lobby-table button { border-radius: 14px; font-family: var(--display); font-weight: 700; background: var(--neon-cyan); color: #10233a; border: 0; box-shadow: 0 4px 0 #1a8fa0; min-height: 42px; padding-inline: 18px; }
+.lobby-table button:disabled { background: #2a1f48; color: var(--muted); box-shadow: none; }
+.lobby-empty { font-family: var(--hand); font-size: 22px; color: var(--muted); }
+#multiplayerForm #joinRoom.primary { background: var(--neon-pink); color: #fff; box-shadow: 0 5px 0 #a12765, 0 0 22px #ff4fa355; }

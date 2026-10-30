@@ -1,18 +1,18 @@
-import { playerOutcome } from './player-outcome.js?v=45157f8cabbe';
-import { celebrateTable } from './celebration.js?v=45157f8cabbe';
-import { gtoThinkTime } from './gto.js?v=45157f8cabbe';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=45157f8cabbe';
-import { PlayerMemory } from './player-memory.js?v=45157f8cabbe';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=45157f8cabbe';
-import { tableSnapshot, animateTable } from './motion.js?v=45157f8cabbe';
-import { LobbyClient, ServerRoom } from './server-room.js?v=45157f8cabbe';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=45157f8cabbe';
-import { bindLobby } from './lobby.js?v=45157f8cabbe';
-import { OnlineRoom } from './multiplayer.js?v=45157f8cabbe';
-import { readObservation } from './strategy.js?v=45157f8cabbe';
-import { randomStyle, driftStyle } from './neural-policy.js?v=45157f8cabbe';
-import { replyTo, reactTo } from './table-talk.js?v=45157f8cabbe';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=45157f8cabbe';
+import { playerOutcome } from './player-outcome.js?v=690beaffbb51';
+import { celebrateTable } from './celebration.js?v=690beaffbb51';
+import { gtoThinkTime } from './gto.js?v=690beaffbb51';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=690beaffbb51';
+import { PlayerMemory } from './player-memory.js?v=690beaffbb51';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=690beaffbb51';
+import { tableSnapshot, animateTable } from './motion.js?v=690beaffbb51';
+import { LobbyClient, ServerRoom } from './server-room.js?v=690beaffbb51';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=690beaffbb51';
+import { bindLobby } from './lobby.js?v=690beaffbb51';
+import { OnlineRoom } from './multiplayer.js?v=690beaffbb51';
+import { readObservation } from './strategy.js?v=690beaffbb51';
+import { randomStyle, driftStyle } from './neural-policy.js?v=690beaffbb51';
+import { replyTo, reactTo } from './table-talk.js?v=690beaffbb51';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=690beaffbb51';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -549,6 +549,24 @@ if (friendsPage) {
     if (!best) list.append(Object.assign(document.createElement('li'), { className: 'bad', textContent: 'No game server answered. Try Direct connection, or ask the host for a link to a server near you.' }));
   });
   lobby = bindLobby(lobbyClient, () => room);
+  // One tap for a fun name, so nobody stalls on the name box.
+  const NAME_A = ['Lucky', 'Sneaky', 'Neon', 'Sleepy', 'Turbo', 'Cosmic', 'Tiny', 'Brave', 'Fuzzy', 'Glitchy', 'Mellow', 'Spicy'];
+  const NAME_B = ['Panda', 'Otter', 'Fox', 'Mochi', 'Pixel', 'Bean', 'Comet', 'Noodle', 'Gecko', 'Waffle', 'Byte', 'Koala'];
+  $('rollName')?.addEventListener('click', () => {
+    $('nickname').value = `${NAME_A[Math.floor(Math.random() * NAME_A.length)]} ${NAME_B[Math.floor(Math.random() * NAME_B.length)]}`;
+    $('nickname').dispatchEvent(new Event('input'));
+    $('nickname').focus();
+  });
+  // Arriving from an invite: say whose table it is and make joining one step.
+  {
+    const invite = new URLSearchParams(location.hash.slice(1)).get('room');
+    if (invite && $('inviteBanner')) {
+      $('inviteBanner').hidden = false;
+      $('inviteBanner').textContent = `You’re invited to table ${invite.slice(0, 8).toUpperCase()}. Pick a name and hit Join.`;
+      $('joinRoom').classList.add('primary');
+      $('setupTitle').textContent = 'Pick a name';
+    }
+  }
   document.querySelector('.app-nav a[aria-current="page"]').addEventListener('click', event => { event.preventDefault(); openLobby(); });
   $('closeMultiplayer').onclick = () => { if (room?.view) closeLobby(); };
   $('multiplayerForm').onsubmit = async event => {
