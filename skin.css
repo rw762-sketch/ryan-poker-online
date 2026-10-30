@@ -2163,3 +2163,44 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
 .lobby-table button:disabled { background: #2a1f48; color: var(--muted); box-shadow: none; }
 .lobby-empty { font-family: var(--hand); font-size: 22px; color: var(--muted); }
 #multiplayerForm #joinRoom.primary { background: var(--neon-pink); color: #fff; box-shadow: 0 5px 0 #a12765, 0 0 22px #ff4fa355; }
+
+/* ===== Your own AI + why-bubbles ===== */
+#aiSettings { max-width: min(520px, 92vw); padding: 26px; }
+#aiSettings h2 { margin: 0 0 6px; font-size: 26px; }
+.ai-settings-note { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+#aiSettingsForm { display: grid; gap: 8px; }
+#aiSettingsForm label { font-size: 13px; font-weight: 600; color: #d8cff5; margin-top: 4px; }
+#aiSettingsForm input:not([type="checkbox"]), #aiSettingsForm select {
+  background: #0b0717; border: 1.5px solid var(--line-strong); border-radius: 12px; padding: 10px 12px; color: var(--text); font: 15px var(--body);
+}
+#aiSettingsForm input:focus, #aiSettingsForm select:focus { border-color: var(--neon-cyan); outline: none; box-shadow: 0 0 0 3px #3cf2ff22; }
+.ai-enable { display: flex; gap: 8px; align-items: center; font-size: 14px !important; }
+.ai-local-tip { font-size: 12.5px; color: var(--muted); background: #ffffff07; border-radius: 10px; padding: 10px 12px; margin: 4px 0; }
+.ai-local-tip code { font-family: var(--hud); color: var(--neon-cyan); word-break: break-all; }
+.ai-settings-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+.ai-settings-actions button { border-radius: 14px; min-height: 44px; padding-inline: 18px; font-family: var(--display); font-weight: 700; border: 0; background: #2c2150; color: var(--text); }
+.ai-settings-actions .primary { background: var(--neon-cyan); color: #10233a; box-shadow: 0 4px 0 #1a8fa0; }
+#aiStatus { font-size: 13.5px; color: var(--neon-cyan); min-height: 1.2em; }
+
+.avatar { cursor: help; }
+.why-pop {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(260px, 70vw);
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--card-ink);
+  box-shadow: 0 0 0 2px var(--neon-cyan), 0 14px 30px #000b;
+  text-align: left;
+}
+.why-pop small { display: block; font: 600 11px/1.2 var(--hud); letter-spacing: .08em; text-transform: uppercase; color: #7a5cc4; margin-bottom: 4px; }
+.why-pop small::before { content: "💭 "; }
+.why-pop p { margin: 0; font-size: 13.5px; line-height: 1.4; }
+.seat-4 .why-pop, .seat-5 .why-pop { left: auto; right: 0; translate: 0 0; }
+.seat-1 .why-pop, .seat-2 .why-pop { left: 0; translate: 0 0; }
+@media (prefers-reduced-motion: no-preference) { .why-pop { animation: talk-in 300ms var(--spring-brisk) both; } }
+.why-pop.settled { animation: none; }

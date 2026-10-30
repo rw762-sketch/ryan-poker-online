@@ -2,10 +2,10 @@
 // (scripts/neural-data.mjs + scripts/neural-train.py), estimates how many big
 // blinds each move is worth from public information and the bot's own cards.
 // Personalities change how the bot chooses among those estimates, not what it sees.
-import { preflopStrength, simulateEquity } from './poker-math.js?v=690beaffbb51';
-import { boardTexture, strategicAction, DEFAULT_POLICY } from './strategy.js?v=690beaffbb51';
-import { TRAINED_POLICY } from './trained-policy.js?v=690beaffbb51';
-import { NEURAL_WEIGHTS } from './neural-weights.js?v=690beaffbb51';
+import { preflopStrength, simulateEquity } from './poker-math.js?v=2972c8b36739';
+import { boardTexture, strategicAction, DEFAULT_POLICY } from './strategy.js?v=2972c8b36739';
+import { TRAINED_POLICY } from './trained-policy.js?v=2972c8b36739';
+import { NEURAL_WEIGHTS } from './neural-weights.js?v=2972c8b36739';
 
 export const NEURAL_ACTIONS = ['fold', 'call', 'half', 'pot', 'allin'];
 const BB = 20;

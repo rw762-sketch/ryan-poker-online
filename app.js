@@ -1,18 +1,20 @@
-import { playerOutcome } from './player-outcome.js?v=690beaffbb51';
-import { celebrateTable } from './celebration.js?v=690beaffbb51';
-import { gtoThinkTime } from './gto.js?v=690beaffbb51';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=690beaffbb51';
-import { PlayerMemory } from './player-memory.js?v=690beaffbb51';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=690beaffbb51';
-import { tableSnapshot, animateTable } from './motion.js?v=690beaffbb51';
-import { LobbyClient, ServerRoom } from './server-room.js?v=690beaffbb51';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=690beaffbb51';
-import { bindLobby } from './lobby.js?v=690beaffbb51';
-import { OnlineRoom } from './multiplayer.js?v=690beaffbb51';
-import { readObservation } from './strategy.js?v=690beaffbb51';
-import { randomStyle, driftStyle } from './neural-policy.js?v=690beaffbb51';
-import { replyTo, reactTo } from './table-talk.js?v=690beaffbb51';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=690beaffbb51';
+import { playerOutcome } from './player-outcome.js?v=2972c8b36739';
+import { celebrateTable } from './celebration.js?v=2972c8b36739';
+import { gtoThinkTime } from './gto.js?v=2972c8b36739';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=2972c8b36739';
+import { PlayerMemory } from './player-memory.js?v=2972c8b36739';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=2972c8b36739';
+import { tableSnapshot, animateTable } from './motion.js?v=2972c8b36739';
+import { LobbyClient, ServerRoom } from './server-room.js?v=2972c8b36739';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=2972c8b36739';
+import { bindLobby } from './lobby.js?v=2972c8b36739';
+import { OnlineRoom } from './multiplayer.js?v=2972c8b36739';
+import { readObservation } from './strategy.js?v=2972c8b36739';
+import { randomStyle, driftStyle } from './neural-policy.js?v=2972c8b36739';
+import { replyTo, reactTo } from './table-talk.js?v=2972c8b36739';
+import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=2972c8b36739';
+import { styleLabel } from './neural-policy.js?v=2972c8b36739';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=2972c8b36739';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -135,6 +137,7 @@ function renderTable(v) {
   }).join('');
   $('log').innerHTML = v.logs.map(line => `<li>${escape(line)}</li>`).join('');
   placeTalk(false);
+  placeWhy(false);
   const player = v.players[0];
   $('handName').textContent = v.board.length >= 3 && !player.folded && player.cards.length === 2
     ? labels[evaluate([...player.cards, ...v.board])[0]] : 'Your two cards are private.';
@@ -230,7 +233,7 @@ function act(action, amount) {
         pendingTimer = setTimeout(() => showRoomError('No response yet. Check the connection before trying again.'), 8000);
       }
     } catch (error) { showRoomError(error.message); }
-  } else if (soloAction(action, amount)) { render(); schedule(); }
+  } else { if (game.turn === 0) noteUserAction(action, amount); if (soloAction(action, amount)) { render(); schedule(); } }
 }
 function deal() {
   if (!room) { start(); return; }
@@ -244,7 +247,33 @@ function thinkTime() {
   const tank = Math.random() < .07 ? 1400 + Math.random() * 2200 : 0;
   return 550 + Math.random() * 900 + facing + Math.min(700, game.pot / 3) + tank;
 }
+// What the bots have noticed about you this session (public actions only).
+const userStats = { hands: 0, entered: 0, raises: 0, calls: 0, folds: 0, shoves: 0, seenHand: 0 };
+function noteUserAction(action, amount) {
+  if (game.hand !== userStats.seenHand) { userStats.seenHand = game.hand; userStats.hands++; userStats.enteredThisHand = false; }
+  if (action === 'fold') userStats.folds++;
+  else if (action === 'call') userStats.calls++;
+  else { userStats.raises++; if (action === 'allin' || amount === game.options().max) userStats.shoves++; }
+  if (!game.board.length && action !== 'fold' && !userStats.enteredThisHand && (game.options().owed > 0 || action !== 'call')) { userStats.entered++; userStats.enteredThisHand = true; }
+}
+function userMemory() {
+  const s = userStats; if (s.hands < 2) return 'nothing yet';
+  const acts = Math.max(1, s.raises + s.calls + s.folds);
+  return `Over ${s.hands} hands the human played ${Math.round(100 * s.entered / s.hands)}% of hands pre-flop, raised ${Math.round(100 * s.raises / acts)}% of the time, folded ${Math.round(100 * s.folds / acts)}%, and went all in ${s.shoves} times.`;
+}
+// Last reasoning per seat, shown when you tap a bot's face.
+const thoughts = {};
 async function liveMove(seat, hand) {
+  if (configured(loadSettings())) {
+    try {
+      const obs = readObservation(game);
+      const recent = game.logs.slice(0, 8).filter(line => !/^Hand \d/.test(line));
+      const move = await llmDecision(obs, { name: game.players[seat].name, persona: `Your style: ${styleLabel(botStyles[seat] || {})}.`, recent, memory: userMemory() });
+      if (game.hand !== hand || game.turn !== seat || game.done) return 'stale';
+      if (move) { thoughts[seat] = { by: loadSettings().model, text: move.why || 'No reason given.' }; if (liveOffline) { liveOffline = false; renderDifficulty(); } return move; }
+    } catch { liveOffline = true; renderDifficulty(); return null; }
+    return null;
+  }
   const o = readObservation(game);
   const observation = { cards:o.cards, board:o.board, pot:o.pot, stack:o.stack, bet:o.bet, current:o.current,
     opponents:o.opponents, position:o.position, opponentRanges:o.opponentRanges, options:o.options };
@@ -335,9 +364,71 @@ $('chatForm')?.addEventListener('submit', async event => {
   $('chatInput').value = '';
   if (room) { try { room.chat(text); } catch (error) { showRoomError(error.message); } return; }
   receiveChat({ kind:'chat', from:0, text });
+  if (handDifficulty === 'live' && configured(loadSettings())) {
+    const live = game.players.flatMap((p, i) => i && !p.sittingOut && p.stack + p.total > 0 ? [i] : []);
+    const named = live.find(i => new RegExp(`\\b${game.players[i].name}\\b`, 'i').test(text));
+    const seat = named ?? live[Math.floor(Math.random() * live.length)];
+    if (seat !== undefined) { try { const reply = await llmChat(text, { name: game.players[seat].name, persona: `Your style: ${styleLabel(botStyles[seat] || {})}.` }); if (reply) { showTalk(seat, reply); return; } } catch {} }
+  }
   if (handDifficulty === 'live' && !liveOffline && await liveChatReply(text)) return;
   botReply(text);
 });
+function explainDecision(decision, obs) {
+  const a = decision.analysis || {};
+  const pct = x => `${Math.round(x * 100)}%`;
+  if (a.model === 'neural') {
+    const values = Object.entries(a.values || {}).map(([k, v]) => `${({ fold:'fold', call: obs.options.owed ? 'call' : 'check', half:'½-pot raise', pot:'pot raise', allin:'all in' })[k]} ${v > 0 ? '+' : ''}${v} BB`).join(' · ');
+    return { by: `Neural · ${a.persona}`, text: `I gave my hand about ${pct(a.equity)} to win. My guesses per move: ${values}.${a.slipped ? ' Went with my gut this time.' : ''}` };
+  }
+  if (a.equity !== undefined && a.equity !== null) return { by: 'Hand-built bot', text: `${a.reason || 'Weighed the price against my chances.'} Estimated chance to win: ${pct(a.equity)}.` };
+  return { by: 'Bot', text: a.reason || 'Played it by feel.' };
+}
+let whyOpen = null;
+function showWhy(seat) { whyOpen = { seat, until: Date.now() + 7000 }; placeWhy(true); }
+function placeWhy(fresh) {
+  document.querySelectorAll('.why-pop').forEach(p => p.remove());
+  if (!whyOpen || Date.now() > whyOpen.until) { whyOpen = null; return; }
+  const seat = whyOpen.seat;
+  const target = document.querySelector(`.seat-${seat}`);
+  if (!target) return;
+  const t = thoughts[seat];
+  const pop = document.createElement('div');
+  pop.className = 'why-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', `${game.players[seat]?.name} explains`);
+  const by = document.createElement('small'); by.textContent = t ? t.by : 'No move yet';
+  const text = document.createElement('p'); text.textContent = t ? `“${t.text}”` : 'Ask me again after I act.';
+  pop.append(by, text);
+  if (!fresh) pop.classList.add('settled');
+  target.append(pop);
+  if (fresh) setTimeout(() => document.addEventListener('click', () => { whyOpen = null; document.querySelectorAll('.why-pop').forEach(p => p.remove()); }, { once: true }), 0);
+}
+document.getElementById('seats')?.addEventListener('click', event => {
+  const avatar = event.target.closest('.avatar');
+  if (!avatar || room) return;
+  const seat = Number(avatar.closest('.seat')?.className.match(/seat-(\d)/)?.[1]);
+  if (Number.isInteger(seat)) { event.stopPropagation(); showWhy(seat); }
+});
+// ---- Your own AI settings ----
+if (document.getElementById('aiSettings')) {
+  const settings = loadSettings();
+  const fill = s => { $('aiPreset').value = s.preset || 'custom'; $('aiBaseUrl').value = s.baseUrl || ''; $('aiModel').value = s.model || ''; $('aiKey').value = s.apiKey || ''; $('aiEnabled').checked = !!s.enabled; $('aiLocalTip').hidden = !['ollama','lmstudio'].includes($('aiPreset').value); };
+  $('aiPreset').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('');
+  fill(settings);
+  $('aiPreset').onchange = () => { const p = PRESETS[$('aiPreset').value]; if (p.baseUrl) $('aiBaseUrl').value = p.baseUrl; if (p.model) $('aiModel').value = p.model; $('aiLocalTip').hidden = !['ollama','lmstudio'].includes($('aiPreset').value); };
+  const read = () => ({ preset: $('aiPreset').value, baseUrl: $('aiBaseUrl').value.trim(), model: $('aiModel').value.trim(), apiKey: $('aiKey').value.trim(), enabled: $('aiEnabled').checked });
+  $('aiSettingsButton').onclick = () => { fill(loadSettings()); $('aiStatus').textContent = ''; $('aiSettings').showModal(); };
+  $('closeAiSettings').onclick = () => $('aiSettings').close();
+  $('aiTest').onclick = async () => {
+    $('aiStatus').textContent = 'Asking the model…';
+    try { $('aiStatus').textContent = `Connected. The model said: “${await testConnection(read())}”`; }
+    catch (error) { $('aiStatus').textContent = /Failed to fetch|NetworkError|Load failed/.test(error.message) ? 'Could not reach that address. For Ollama or LM Studio, make sure it is running and allows this site (see the tip above).' : error.message; }
+  };
+  $('aiSettingsForm').onsubmit = event => {
+    event.preventDefault();
+    const next = read(); saveSettings(next);
+    $('aiStatus').textContent = next.enabled ? 'Saved. Pick the Live AI chip to play against it.' : 'Saved. Turned off for now.';
+    liveOffline = false; renderDifficulty();
+  };
+}
 function showTalk(seat, text) {
   if (!text) return;
   talk = { seat, text, until: Date.now() + 3800 };
@@ -357,7 +448,8 @@ function schedule() {
     }
     const obs = botObservation(game, playerMemory);
     obs.style = botStyles[game.turn];
-    const decision = chooseBotAction(obs, handDifficulty);
+    const decision = chooseBotDecision(obs, handDifficulty);
+    thoughts[game.turn] = explainDecision(decision, obs);
     act(decision.action, decision.amount);
   }, handDifficulty === 'live' ? 250 : thinkTime());
 }
