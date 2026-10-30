@@ -1,4 +1,4 @@
-import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=94c0c2e8da39';
+import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=23285c79844b';
 
 export const DEFAULT_POLICY = { openEarly:.64, openLate:.42, defend:.035, value:.61, aggression:.72, bluff:.055, size:.65 };
 export function positionOf(game, seat) {
