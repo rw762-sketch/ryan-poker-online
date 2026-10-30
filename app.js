@@ -1,17 +1,17 @@
-import { playerOutcome } from './player-outcome.js?v=6e6dba662784';
-import { celebrateTable } from './celebration.js?v=6e6dba662784';
-import { gtoThinkTime } from './gto.js?v=6e6dba662784';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=6e6dba662784';
-import { PlayerMemory } from './player-memory.js?v=6e6dba662784';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=6e6dba662784';
-import { tableSnapshot, animateTable } from './motion.js?v=6e6dba662784';
-import { LobbyClient, ServerRoom } from './server-room.js?v=6e6dba662784';
-import { MULTIPLAYER_API_URL } from './network-config.js?v=6e6dba662784';
-import { bindLobby } from './lobby.js?v=6e6dba662784';
-import { OnlineRoom } from './multiplayer.js?v=6e6dba662784';
-import { readObservation } from './strategy.js?v=6e6dba662784';
-import { randomStyle, driftStyle } from './neural-policy.js?v=6e6dba662784';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=6e6dba662784';
+import { playerOutcome } from './player-outcome.js?v=6979f681616d';
+import { celebrateTable } from './celebration.js?v=6979f681616d';
+import { gtoThinkTime } from './gto.js?v=6979f681616d';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=6979f681616d';
+import { PlayerMemory } from './player-memory.js?v=6979f681616d';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=6979f681616d';
+import { tableSnapshot, animateTable } from './motion.js?v=6979f681616d';
+import { LobbyClient, ServerRoom } from './server-room.js?v=6979f681616d';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=6979f681616d';
+import { bindLobby } from './lobby.js?v=6979f681616d';
+import { OnlineRoom } from './multiplayer.js?v=6979f681616d';
+import { readObservation } from './strategy.js?v=6979f681616d';
+import { randomStyle, driftStyle } from './neural-policy.js?v=6979f681616d';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=6979f681616d';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -455,6 +455,23 @@ $('multiplayer').onclick = () => {
 };
 if (friendsPage) {
   const lobbyClient = new LobbyClient();
+  // Use whichever server answers fastest from this network (matters for friends overseas).
+  if (friendsPage) pickServer().then(url => { if (url && !room) lobbyClient.base = url.replace(/\/$/, ''); }).catch(() => {});
+  $('checkConnection')?.addEventListener('click', async () => {
+    const list = $('connectionResults');
+    list.replaceChildren(Object.assign(document.createElement('li'), { textContent: 'Checking…' }));
+    const results = await probeServers(serverCandidates());
+    list.replaceChildren(...results.map(r => {
+      const li = document.createElement('li');
+      const host = r.url.startsWith('http') ? new URL(r.url).host : location.host;
+      li.textContent = r.ok ? `${host}: reachable · ${r.ms} ms${r.ms > 800 ? ' (slow, but playable)' : ''}` : `${host}: not reachable from this network`;
+      li.className = r.ok ? 'ok' : 'bad';
+      return li;
+    }));
+    const best = results.filter(r => r.ok).sort((a, b) => a.ms - b.ms)[0];
+    if (best && !room) { lobbyClient.base = best.url.replace(/\/$/, ''); try { localStorage.setItem('poker-server', best.url); } catch {} }
+    if (!best) list.append(Object.assign(document.createElement('li'), { className: 'bad', textContent: 'No game server answered. Try Direct connection, or ask the host for a link to a server near you.' }));
+  });
   lobby = bindLobby(lobbyClient, () => room);
   document.querySelector('.app-nav a[aria-current="page"]').addEventListener('click', event => { event.preventDefault(); openLobby(); });
   $('closeMultiplayer').onclick = () => { if (room?.view) closeLobby(); };
@@ -507,6 +524,8 @@ if (friendsPage) {
     if (!room) return;
     const url = new URL(location.href);
     url.hash = `room=${room.code}&mode=${room.server ? 'server' : 'direct'}`;
+    // Carry the host's server so a friend abroad lands on the same one.
+    if (room.server && lobbyClient.base.startsWith('https://')) url.searchParams.set('server', lobbyClient.base);
     try { await navigator.clipboard.writeText(url.href); connectionMessage = 'Invite link copied. Send it to your friends.'; }
     catch { connectionMessage = `Share room code ${room.code} with your friends.`; }
     renderRoom();

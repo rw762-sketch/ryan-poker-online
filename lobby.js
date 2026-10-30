@@ -30,7 +30,7 @@ export function bindLobby(client, getRoom) {
       const item = document.createElement('div'); item.className = 'lobby-table';
       const info = document.createElement('div');
       const name = document.createElement('strong'); name.textContent = `${room.host}’s table`;
-      const detail = document.createElement('span'); detail.textContent = `${room.players}/4 seats · ${room.started ? 'In progress' : room.joinable ? 'Waiting for players' : 'Full'}`;
+      const detail = document.createElement('span'); detail.textContent = `${room.players}/6 seats · ${room.started ? 'In progress' : room.joinable ? 'Waiting for players' : 'Full'}`;
       info.append(name, detail);
       const join = document.createElement('button'); join.type = 'button';
       const own = data.room === room.code;

@@ -41,3 +41,20 @@ test('transport failure preserves useful network guidance and does not leave a p
   await assert.rejects(joining,/browser connection to the host failed/);
   assert.equal(peer.listenerCount('error'),0);
 });
+
+import { serverCandidates, pickServer } from '../network-config.js';
+test('server links are remembered, validated, and the fastest healthy server wins', async () => {
+  const store = new Map(), storage = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  assert.deepEqual(serverCandidates('?server=javascript:alert(1)', storage).includes('javascript:alert(1)'), false);
+  const list = serverCandidates('?server=https://hk.example.com/api', storage);
+  assert.equal(list[0], 'https://hk.example.com/api');
+  assert.equal(serverCandidates('', storage)[0], 'https://hk.example.com/api');
+  const delays = { 'https://slow.example.com/api': 60, 'https://fast.example.com/api': 5 };
+  const fetcher = async url => {
+    const base = url.replace(/\/health$/, '');
+    if (!(base in delays)) throw Error('unreachable');
+    await new Promise(r => setTimeout(r, delays[base]));
+    return { ok: true, json: async () => ({ ok: true }) };
+  };
+  assert.equal(await pickServer(['https://down.example.com/api', 'https://slow.example.com/api', 'https://fast.example.com/api'], fetcher), 'https://fast.example.com/api');
+});

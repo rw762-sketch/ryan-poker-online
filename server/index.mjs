@@ -6,7 +6,7 @@ import { PokerService } from './poker-service.mjs';
 import { askGroqTalk, askGroqChat, claimTalk } from './groq-bot.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 export function makeServer({ service = new PokerService(), allowedOrigins = [] } = {}) {
   const server = createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -50,7 +50,7 @@ export function makeServer({ service = new PokerService(), allowedOrigins = [] }
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
     try {
       const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
-      if (!path.startsWith(root) || url.pathname.split('/').some(part => part.startsWith('.')) || !['.html', '.js', '.css', '.svg'].includes(extname(path))) throw Error('Invalid path');
+      if (!path.startsWith(root) || url.pathname.split('/').some(part => part.startsWith('.')) || !['.html', '.js', '.css', '.svg', '.woff2'].includes(extname(path))) throw Error('Invalid path');
       const data = await readFile(path);
       res.setHeader('Content-Type', types[extname(path)] || 'application/octet-stream');
       res.setHeader('Cache-Control', 'no-cache');

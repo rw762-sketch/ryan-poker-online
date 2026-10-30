@@ -6,6 +6,10 @@ for (const entry of await readdir('.')) {
   if (!/\.(html|css|js)$/.test(entry)) continue;
   assets['/' + entry] = { type: types[entry.split('.').pop()], content: await readFile('./' + entry, 'utf8') };
 }
+// Fonts are self-hosted (Google Fonts is blocked in some regions); embed them as base64.
+for (const entry of await readdir('fonts')) {
+  if (entry.endsWith('.woff2')) assets['/fonts/' + entry] = { type: 'font/woff2', base64: (await readFile('fonts/' + entry)).toString('base64') };
+}
 for (const entry of await readdir('vendor')) {
   assets['/vendor/' + entry] = { type: entry.endsWith('.js') ? types.js : 'text/plain', content: await readFile('vendor/' + entry, 'utf8') };
 }

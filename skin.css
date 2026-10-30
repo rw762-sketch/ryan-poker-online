@@ -1581,3 +1581,8 @@ footer button:not(:disabled):hover { background: none; color: var(--brass); }
 }
 .table-chat:focus-within { outline: none; }
 .seat-0 > .talk-bubble { bottom: calc(100% + 2px); }
+.connection-results { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; font-size: 13px; }
+.connection-results li::before { content: "● "; }
+.connection-results .ok { color: var(--win); }
+.connection-results .bad { color: #f08a8d; }
+.connection-tip { font-size: 13px; color: var(--muted); }

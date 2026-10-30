@@ -136,3 +136,12 @@ The defense correction removes the absolute six-big-blind preflop fold shortcut 
 ## Table chat
 
 Type at the table. In rooms, messages go to everyone through `/api/chat` (server) or the host relay (direct). At the solo table, bots may answer; with Live AI they answer through the LLM.
+
+
+## Playing with friends overseas
+
+- Fonts are self-hosted (`fonts/`, `fonts.css`): Google Fonts is blocked in mainland China and would stall page loads there.
+- WebRTC tries several STUN servers (Cloudflare, a China-hosted one, Google).
+- The friends page pings every known server and keeps the fastest healthy one (`pickServer` in `network-config.js`). **Check my connection** under Connection settings shows what is reachable from the player's network.
+- Invite links for server rooms carry `?server=…`, so a friend abroad lands on the host's server even if their default differs.
+- For friends in regions where the main host is slow or blocked, run another copy of the server close to them (for example `node server/index.mjs` behind HTTPS on a Hong Kong or Singapore machine, or the Cloudflare build on a custom domain) and add its `https://…/api` address to `MIRROR_API_URLS`. The hosted build also serves the pages, so friends can open the game from the server's own domain instead of github.io.
