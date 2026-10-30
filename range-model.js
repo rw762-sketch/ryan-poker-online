@@ -1,6 +1,6 @@
-import {preflopStrength,rankHand} from './poker-math.js?v=ac6e3e31258c';
-import {boardTexture} from './strategy.js?v=ac6e3e31258c';
-import {RANGE_ACTION_COUNTS,RANGE_BACKOFF_COUNTS} from './range-model-data.js?v=ac6e3e31258c';
+import {preflopStrength,rankHand} from './poker-math.js?v=1512f49c5b0b';
+import {boardTexture} from './strategy.js?v=1512f49c5b0b';
+import {RANGE_ACTION_COUNTS,RANGE_BACKOFF_COUNTS} from './range-model-data.js?v=1512f49c5b0b';
 export function handFeatures(cards,board=[]) {
  if(!board.length){const strength=preflopStrength(cards);return {bucket:strength<.3?0:strength<.45?1:strength<.6?2:strength<.75?3:4,draw:0};}
  const category=Math.floor(rankHand([...cards,...board])/15**5),boardCategory=Math.floor(rankHand(board)/15**5);

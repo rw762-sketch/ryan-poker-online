@@ -4,10 +4,14 @@
 
 const pick = (list, rng) => list[Math.floor(rng() * list.length)];
 
-export const DEALER_NAMES = ['Dot', 'Pixel', 'Bitsy', 'Neon', 'Chip', 'Ace', 'Volt', 'Lumi'];
+// The house has one dealer: Lokwey. New table, new outfit, same Lokwey.
+export const DEALER_NAME = 'Lokwey';
 
 export function makeDealer(rng = Math.random) {
-  return { name: pick(DEALER_NAMES, rng), hue: Math.floor(rng() * 360), bow: pick(['pink', 'cyan', 'lime', 'gold'], rng), chatty: .35 + rng() * .4 };
+  // Dealers are a different species from the players: a croupier droid with a
+  // visor, a vest, a hat and its own name. Each table gets a new one.
+  return { name: DEALER_NAME, hue: Math.floor(rng() * 360), bow: pick(['pink', 'cyan', 'lime', 'gold'], rng),
+    hat: pick(['cap', 'visor', 'headset', 'antenna'], rng), chatty: .35 + rng() * .4 };
 }
 
 const LINES = {
@@ -21,7 +25,8 @@ const LINES = {
   win: ['Ship it to {name}.', 'Pot to {name}.', '{name} takes it down.', 'That one goes to {name}.', 'Push it to {name}.'],
   fold: ['Everyone folds.', 'No contest.', 'Uncontested.', 'Take it down.'],
   badbeat: ['Oof. Sorry.', 'That’s a rough one.', 'Poker, folks.', 'Ouch.'],
-  tip: ['Thank you kindly!', 'Aw, for me?', 'Cheers!', 'You’re the best.'],
+  tip: ['Thank you kindly!', 'Aw, for me?', 'Cheers!', 'You’re the best.', 'Lokwey remembers tippers.', 'Much obliged.'],
+  tipLots: ['You’re spoiling me.', 'Okay, okay, I like you.', 'My favourite seat.', 'Big tipper at the table!'],
   idle: ['Anyone need a drink?', 'Taking your time, I see.', 'No rush.', 'The cards can wait.', 'Nice night for it.', '*hums*', 'Who’s hungry?'],
 };
 const BIG_POT_BB = 40;
@@ -55,6 +60,6 @@ export function dealerEvent(before, after, { rng = Math.random, chatty = .6, big
 export function dealerIdle(rng = Math.random) {
   return rng() < .5 ? pick(LINES.idle, rng) : '';
 }
-export const dealerTip = (rng = Math.random) => pick(LINES.tip, rng);
+export const dealerTip = (rng = Math.random, count = 1) => pick(count >= 3 ? LINES.tipLots : LINES.tip, rng);
 
 function fill(line, extra) { return line.replace('{name}', extra.name || 'the winner'); }

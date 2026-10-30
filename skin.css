@@ -2334,20 +2334,31 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
 }
 
 /* ===== The house dealer ===== */
-.dealer { position: absolute; left: 6%; top: 37%; translate: 0 -50%; z-index: 3; display: grid; justify-items: center; gap: 2px; pointer-events: none; }
+/* The dealer stands at the pot, inside the pot label row. */
+.dealer { position: relative; display: grid; justify-items: center; margin-right: 10px; z-index: 3; pointer-events: none; }
+.pot-label { position: relative; }
 .dealer-blob {
   position: relative; width: 44px; height: 40px; padding: 0; border: 0; cursor: pointer; pointer-events: auto;
-  border-radius: 50% 50% 46% 54% / 60% 60% 40% 40%;
-  background: radial-gradient(circle at 35% 30%, hsl(var(--hue, 200) 100% 84%), hsl(var(--hue, 200) 85% 62%) 60%, hsl(var(--hue, 200) 70% 44%));
-  box-shadow: 0 5px 0 hsl(var(--hue, 200) 60% 26%), 0 10px 18px #000a;
+  border-radius: 46% 46% 40% 40% / 50% 50% 38% 38%;
+  background:
+    linear-gradient(180deg, transparent 62%, #1b1233 62%, #1b1233 100%),
+    radial-gradient(circle at 35% 30%, hsl(var(--hue, 200) 100% 84%), hsl(var(--hue, 200) 85% 62%) 60%, hsl(var(--hue, 200) 70% 44%));
+  box-shadow: 0 5px 0 hsl(var(--hue, 200) 60% 26%), 0 10px 18px #000a, inset 0 0 0 1.5px #ffffff22;
   transition: translate 220ms var(--spring-bouncy);
 }
 .dealer-blob:hover { translate: 0 -2px; }
 .dealer-blob:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 3px; }
 .dealer-blob .face { position: absolute; inset: 0; display: block; }
-.dealer-blob .face i { position: absolute; top: 38%; width: 6px; height: 8px; border-radius: 50%; background: #1b1233; box-shadow: inset 1px 1px 0 #ffffffaa; transition: all 220ms var(--spring-brisk); }
-.dealer-blob .face i:first-child { left: 29%; } .dealer-blob .face i:nth-child(2) { right: 29%; }
-.dealer-blob .face u { position: absolute; left: 50%; top: 60%; width: 10px; height: 4px; translate: -50% 0; border: 2px solid #1b1233; border-top: 0; border-radius: 0 0 9px 9px; transition: all 220ms var(--spring-brisk); }
+.dealer-blob .face::before { content: ""; position: absolute; left: 14%; right: 14%; top: 28%; height: 11px; border-radius: 6px; background: #120c24; box-shadow: inset 0 0 0 1px #3cf2ff55, 0 0 8px #3cf2ff44; }
+.dealer-blob .face i { position: absolute; top: 36%; width: 7px; height: 3px; border-radius: 2px; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); transition: all 220ms var(--spring-brisk); }
+.dealer-blob .face i:first-child { left: 24%; } .dealer-blob .face i:nth-child(2) { right: 24%; }
+.dealer-blob .face u { position: absolute; left: 50%; top: 66%; width: 9px; height: 3px; translate: -50% 0; border: 0; border-radius: 2px; background: var(--neon-pink); box-shadow: 0 0 6px var(--neon-pink); transition: all 220ms var(--spring-brisk); }
+/* hats */
+.dealer-blob::before { content: ""; position: absolute; left: 50%; translate: -50% 0; }
+.dealer[data-hat="cap"] .dealer-blob::before { top: -9px; width: 26px; height: 12px; border-radius: 8px 8px 2px 2px; background: linear-gradient(180deg, #2a1f48, #1b1233); box-shadow: 0 2px 0 var(--bow, var(--neon-pink)); }
+.dealer[data-hat="visor"] .dealer-blob::before { top: -3px; width: 34px; height: 7px; border-radius: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink)); opacity: .9; }
+.dealer[data-hat="headset"] .dealer-blob::before { top: -4px; width: 40px; height: 16px; border: 3px solid #1b1233; border-bottom: 0; border-radius: 20px 20px 0 0; box-sizing: border-box; }
+.dealer[data-hat="antenna"] .dealer-blob::before { top: -12px; width: 2px; height: 12px; background: #1b1233; box-shadow: 0 -4px 0 2px var(--bow, var(--neon-pink)); }
 .dealer-blob .face em { position: absolute; font-style: normal; line-height: 1; pointer-events: none; }
 /* bow tie */
 .dealer-blob .bow { position: absolute; left: 50%; bottom: -3px; width: 16px; height: 7px; translate: -50% 0; background: var(--bow, var(--neon-pink)); clip-path: polygon(0 0, 50% 40%, 100% 0, 100% 100%, 50% 60%, 0 100%); filter: drop-shadow(0 1px 0 #0008); }
@@ -2358,28 +2369,31 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
 .dealer-blob .deck { position: absolute; right: -14px; bottom: -2px; width: 12px; height: 16px; }
 .dealer-blob .deck b { position: absolute; inset: 0; border-radius: 2px; background: linear-gradient(135deg, #ff4fa3, #9b6bff); border: 1px solid #fff8; box-shadow: 0 1px 2px #0008; }
 .dealer-blob .deck b:nth-child(2) { translate: 1px -1px; } .dealer-blob .deck b:nth-child(3) { translate: 2px -2px; }
-.dealer-tag { font: 500 15px/1 var(--hand); color: var(--muted); opacity: .85; }
+.dealer-tag { position: absolute; top: calc(100% + 3px); display: flex; align-items: center; gap: 5px; font: 500 13px/1 var(--hand); color: var(--muted); white-space: nowrap; pointer-events: auto; }
+.dealer-tip { font: 600 9px/1 var(--hud); letter-spacing: .04em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; border: 1px solid var(--brass); color: var(--brass); background: #f2c46b14; cursor: pointer; }
+.dealer-tip:hover { background: var(--brass); color: #1b1233; box-shadow: 0 0 10px #f2c46b88; }
+.dealer-tip:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 2px; }
 .dealer-bubble {
-  position: absolute; top: 2px; left: calc(100% + 14px); white-space: nowrap; padding: 6px 11px; border-radius: 14px 14px 14px 4px;
-  background: var(--text); color: var(--card-ink); font: 600 13px/1.2 var(--body); box-shadow: 0 4px 14px #0008; max-width: 50vw; white-space: normal; min-width: 120px;
+  position: absolute; bottom: calc(100% + 10px); left: 50%; translate: -50% 0; padding: 6px 11px; border-radius: 14px 14px 14px 14px;
+  background: var(--text); color: var(--card-ink); font: 600 13px/1.2 var(--body); box-shadow: 0 4px 14px #0008; width: max-content; max-width: 220px; text-align: center; letter-spacing: 0; text-transform: none;
 }
-.dealer-bubble::before { content: ""; position: absolute; left: -7px; top: 10px; border: 5px solid transparent; border-right-color: var(--text); border-left: 0; }
+.dealer-bubble::before { content: ""; position: absolute; left: 50%; top: 100%; translate: -50% 0; border: 6px solid transparent; border-top-color: var(--text); border-bottom: 0; }
 /* moods */
 .dealer[data-mood="deal"] .hand-r { translate: -10px -14px; rotate: -40deg; }
 .dealer[data-mood="deal"] .hand-l { translate: 4px -6px; }
-.dealer[data-mood="deal"] .face i { scale: 1 .7; translate: 0 2px; }
-.dealer[data-mood="happy"] .face i { width: 8px; height: 5px; background: none; border: 2px solid #1b1233; border-bottom: 0; border-radius: 8px 8px 0 0; box-shadow: none; top: 36%; }
-.dealer[data-mood="happy"] .face u { width: 13px; height: 7px; background: #1b1233; border-radius: 0 0 10px 10px; box-shadow: inset 0 -3px 0 #ff6b9e; }
-.dealer[data-mood="wow"] .face i { width: 9px; height: 10px; top: 34%; box-shadow: inset 1px 1px 0 #fff, 0 0 0 1.5px #fff; }
-.dealer[data-mood="wow"] .face u { width: 7px; height: 8px; background: #1b1233; border-radius: 50%; }
+.dealer[data-mood="deal"] .face i { scale: 1 .7; translate: 0 1px; }
+.dealer[data-mood="happy"] .face i { width: 8px; height: 5px; background: none; border: 2px solid var(--neon-cyan); border-bottom: 0; border-radius: 8px 8px 0 0; top: 33%; }
+.dealer[data-mood="happy"] .face u { width: 13px; height: 6px; border-radius: 0 0 10px 10px; }
+.dealer[data-mood="wow"] .face i { width: 8px; height: 8px; border-radius: 50%; top: 31%; box-shadow: 0 0 10px var(--neon-cyan); }
+.dealer[data-mood="wow"] .face u { width: 6px; height: 6px; border-radius: 50%; }
 .dealer[data-mood="wow"] .hand { translate: 0 -10px; }
-.dealer[data-mood="wince"] .face i { height: 3px; top: 42%; border-radius: 0; box-shadow: none; rotate: 8deg; }
-.dealer[data-mood="wince"] .face i:nth-child(2) { rotate: -8deg; }
-.dealer[data-mood="wince"] .face u { width: 9px; height: 4px; border-width: 2px 2px 0; border-radius: 9px 9px 0 0; translate: -50% 3px; }
-.dealer[data-mood="calm"] .face i { height: 4px; top: 42%; border-radius: 0 0 6px 6px; box-shadow: none; }
+.dealer[data-mood="wince"] .face i { rotate: 12deg; width: 8px; }
+.dealer[data-mood="wince"] .face i:nth-child(2) { rotate: -12deg; }
+.dealer[data-mood="wince"] .face u { width: 9px; height: 3px; border-radius: 9px 9px 0 0; translate: -50% 2px; rotate: 180deg; }
+.dealer[data-mood="calm"] .face i { height: 2px; }
 @media (prefers-reduced-motion: no-preference) {
-  .dealer-blob .face i { animation: dealer-blink 5.3s infinite 1.7s; }
-  @keyframes dealer-blink { 0%, 96%, 100% { scale: 1 1; } 98% { scale: 1 .1; } }
+  .dealer-blob .face i { animation: dealer-scan 5.3s infinite 1.7s; }
+  @keyframes dealer-scan { 0%, 90%, 100% { opacity: 1; } 93% { opacity: .2; } 96% { opacity: 1; } }
   .dealer[data-mood="deal"] .dealer-blob { animation: deal-bob .45s ease-in-out 2; }
   @keyframes deal-bob { 50% { rotate: -6deg; translate: 0 -2px; } }
   .dealer[data-mood="deal"] .deck { animation: deck-riffle .3s ease-in-out 3; }
@@ -2391,10 +2405,12 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
   .dealer-blob { animation: dealer-breathe 3.6s ease-in-out infinite; }
   @keyframes dealer-breathe { 50% { scale: 1.03 .98; } }
   .dealer-bubble.pop { animation: bubble-pop .32s var(--spring-bouncy) both; }
-  @keyframes bubble-pop { from { opacity: 0; scale: .7; translate: -6px 4px; } }
+  @keyframes bubble-pop { from { opacity: 0; translate: -50% 6px; scale: .8; } to { translate: -50% 0; } }
 }
 .table-page .board-area { inset: 150px 0 0; }
 @media (max-width: 700px) {
-  .dealer { left: 10px; top: 55%; scale: .82; transform-origin: left center; }
-  .dealer-bubble { min-width: 90px; max-width: 46vw; }
+  /* phones: the pot row is narrow, so the dealer stands just above it, still centred in front of you */
+  .dealer { position: absolute; left: 50%; bottom: calc(100% + 6px); translate: -50% 0; margin: 0; scale: .8; transform-origin: bottom center; }
+  .dealer-tag { display: none; }
+  .dealer-bubble { max-width: 60vw; }
 }

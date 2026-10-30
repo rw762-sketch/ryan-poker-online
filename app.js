@@ -1,23 +1,23 @@
-import { playerOutcome } from './player-outcome.js?v=ac6e3e31258c';
-import { celebrateTable } from './celebration.js?v=ac6e3e31258c';
-import { gtoThinkTime } from './gto.js?v=ac6e3e31258c';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=ac6e3e31258c';
-import { PlayerMemory } from './player-memory.js?v=ac6e3e31258c';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=ac6e3e31258c';
-import { tableSnapshot, animateTable } from './motion.js?v=ac6e3e31258c';
-import { LobbyClient, ServerRoom } from './server-room.js?v=ac6e3e31258c';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=ac6e3e31258c';
-import { bindLobby } from './lobby.js?v=ac6e3e31258c';
-import { OnlineRoom } from './multiplayer.js?v=ac6e3e31258c';
-import { readObservation } from './strategy.js?v=ac6e3e31258c';
-import { randomStyle, driftStyle, styleThinkTime } from './neural-policy.js?v=ac6e3e31258c';
-import { replyTo, reactTo, drinkLine } from './table-talk.js?v=ac6e3e31258c';
-import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=ac6e3e31258c';
-import { styleLabel } from './neural-policy.js?v=ac6e3e31258c';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=ac6e3e31258c';
-import { loadTableConfig, saveTableConfig, cleanTableConfig, blindsOf, tableSummary, betPresets, stackDepth } from './table-config.js?v=ac6e3e31258c';
-import { makeDealer, dealerEvent, dealerIdle, dealerTip } from './dealer.js?v=ac6e3e31258c';
-import { startFaces, applyFaces, reactToDrink, lookAt, tasteOf } from './faces.js?v=ac6e3e31258c';
+import { playerOutcome } from './player-outcome.js?v=1512f49c5b0b';
+import { celebrateTable } from './celebration.js?v=1512f49c5b0b';
+import { gtoThinkTime } from './gto.js?v=1512f49c5b0b';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=1512f49c5b0b';
+import { PlayerMemory } from './player-memory.js?v=1512f49c5b0b';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=1512f49c5b0b';
+import { tableSnapshot, animateTable } from './motion.js?v=1512f49c5b0b';
+import { LobbyClient, ServerRoom } from './server-room.js?v=1512f49c5b0b';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=1512f49c5b0b';
+import { bindLobby } from './lobby.js?v=1512f49c5b0b';
+import { OnlineRoom } from './multiplayer.js?v=1512f49c5b0b';
+import { readObservation } from './strategy.js?v=1512f49c5b0b';
+import { randomStyle, driftStyle, styleThinkTime } from './neural-policy.js?v=1512f49c5b0b';
+import { replyTo, reactTo, drinkLine } from './table-talk.js?v=1512f49c5b0b';
+import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=1512f49c5b0b';
+import { styleLabel } from './neural-policy.js?v=1512f49c5b0b';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=1512f49c5b0b';
+import { loadTableConfig, saveTableConfig, cleanTableConfig, blindsOf, tableSummary, betPresets, stackDepth } from './table-config.js?v=1512f49c5b0b';
+import { makeDealer, dealerEvent, dealerIdle, dealerTip } from './dealer.js?v=1512f49c5b0b';
+import { startFaces, applyFaces, reactToDrink, lookAt, tasteOf } from './faces.js?v=1512f49c5b0b';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -53,6 +53,8 @@ function runDealer(before, after) {
     $('dealerName').textContent = dealer.name;
     el.style.setProperty('--hue', dealer.hue);
     el.dataset.bow = dealer.bow;
+    el.dataset.hat = dealer.hat;
+    tips = 0;
   }
   const event = dealerEvent(before, after, { chatty: dealer.chatty, bigBlind: room ? 20 : game.bigBlind });
   if (!event) return;
@@ -61,12 +63,16 @@ function runDealer(before, after) {
   clearTimeout(dealerIdleTimer);
   dealerIdleTimer = setTimeout(() => { if (!document.hidden && !game.done && game.turn === 0 && !room) dealerSay(dealerIdle(), 2400); }, 14000 + Math.random() * 12000);
 }
-if ($('dealerBlob')) $('dealerBlob').onclick = () => {
-  if (room) { dealerSay(['Hey!', 'Hi there.', 'Boop.'][Math.floor(Math.random() * 3)], 1500); return; }
+let tips = 0;
+function tipDealer() {
+  if (room) { dealerSay(['Tips are off in rooms, but thanks!', 'Aw. Keep it for the pot.'][Math.floor(Math.random() * 2)], 2000); return; }
   if (game.players[0].stack < 2) { dealerSay('Keep your chips, friend.', 2000); return; }
-  game.players[0].stack -= 1; render();
-  dealerMood('happy', 1600); dealerSay(dealerTip(), 2200);
-};
+  game.players[0].stack -= 1; tips++; render();
+  dealerMood('happy', 1600); dealerSay(dealerTip(Math.random, tips), 2200);
+  $('tipDealer')?.animate([{ scale: 1 }, { scale: 1.25 }, { scale: 1 }], { duration: 300, easing: 'ease-out' });
+}
+if ($('dealerBlob')) $('dealerBlob').onclick = () => { if (room) { dealerSay(['Hey!', 'Hi there.', 'Boop.'][Math.floor(Math.random() * 3)], 1500); return; } dealerSay(['That’s me, Lokwey.', 'Need something? Tip jar’s below.', 'Hi! I deal.', 'Boop.'][Math.floor(Math.random() * 4)], 1800); };
+if ($('tipDealer')) $('tipDealer').onclick = tipDealer;
 let tableConfig = loadTableConfig();
 const newSoloGame = () => { const [smallBlind, bigBlind] = blindsOf(tableConfig); return new Poker({ stack: tableConfig.stack, smallBlind, bigBlind }); };
 let game = newSoloGame();
