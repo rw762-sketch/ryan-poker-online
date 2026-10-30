@@ -124,3 +124,15 @@ Validation now includes 33 tests, with arena chip conservation, bounded history,
 The defense correction removes the absolute six-big-blind preflop fold shortcut and replaces the large fixed equity cushion with a price-scaled margin capped at three percentage points. River decisions and all-in calls do not receive a future-betting discount. Cheap calls into limped pots use equity rather than the unopened-pot opening cutoff. Merely matching a large bet no longer assigns a caller the raiser's tight range.
 
 `node scripts/check-fold-rates.mjs` runs 300 seeded hands each against a minimum-raise, half-pot, and calling opponent. The before/after behavioral audit is saved in `training/defense-check.json`. Against the half-pot opponent, folds per faced bet fell from 47.6% to 42.3%; this demonstrates changed behavior, not a higher win rate. The full suite now contains 38 tests including cheap-call, river, all-in, range-inference, and weak-hand folding regressions.
+
+
+## Bots
+
+- **Easy / Medium / Hard:** hand-built strategy (equity simulation, pot odds, position, inferred ranges). GTO was folded into Hard after paired tests showed Hard's engine winning by about 1 big blind per hand.
+- **Neural:** an action-value network (28 features → 64 → 64 → 5 moves) trained on simulated hands. Targets come from Monte Carlo playouts of every legal move against a mix of bot styles and earlier versions of itself (`scripts/neural-data.mjs`, `scripts/neural-train.py`). Each bot samples its own point in a continuous style space that drifts hand to hand and tilts after big losses; choices follow KL-regularized search (Jacob et al., ICML 2022) so play stays human-like. Benchmark: `node scripts/neural-eval.mjs 3000 7200000 neural-shark hard`.
+- **Live AI:** each bot decision and table-talk line comes from an LLM through `POST /api/table-talk`, falling back to Neural when unavailable. Requires the server to be redeployed from this repository with `GROQ_API_KEY` set.
+- All-in calls read the shover's public habit (shoves per hands dealt) instead of assuming premium hands.
+
+## Table chat
+
+Type at the table. In rooms, messages go to everyone through `/api/chat` (server) or the host relay (direct). At the solo table, bots may answer; with Live AI they answer through the LLM.

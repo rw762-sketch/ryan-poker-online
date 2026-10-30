@@ -1,4 +1,4 @@
-import { MULTIPLAYER_API_URL } from './network-config.js?v=2faa4b345575';
+import { MULTIPLAYER_API_URL } from './network-config.js?v=6e6dba662784';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 export class LobbyClient {
@@ -45,8 +45,8 @@ export class LobbyClient {
 }
 
 export class ServerRoom {
-  constructor({ client, onState, onStatus, onError, onGift = () => {} }) {
-    Object.assign(this, { client, onState, onStatus, onError, onGift });
+  constructor({ client, onState, onStatus, onError, onGift = () => {}, onChat = () => {} }) {
+    Object.assign(this, { client, onState, onStatus, onError, onGift, onChat });
     this.server = true; this.closed = false; this.connected = false; this.view = null;
     this.code = ''; this.me = -1; this.host = false; this.giftId = 0; this.failures = 0;
   }
@@ -60,7 +60,7 @@ export class ServerRoom {
     this.view = data.state; this.connected = true;
     if (this.failures) this.onStatus('Connection restored.');
     this.failures = 0;
-    for (const gift of data.gifts || []) if (gift.id > this.giftId) { this.giftId = gift.id; this.onGift(gift); }
+    for (const gift of data.gifts || []) if (gift.id > this.giftId) { this.giftId = gift.id; if (gift.kind === 'chat') this.onChat(gift); else this.onGift(gift); }
     if (changed) this.onState(this.view);
   }
   async open(name, path, body) {
@@ -101,6 +101,7 @@ export class ServerRoom {
   manageAI(operation, seat) { this.command('/bots', { operation, seat, version: this.view?.version }); }
   deal() { this.command('/deal', { version: this.view?.version }); }
   buyDrink(to, drink) { this.command('/gift', { to, drink }); }
+  chat(text) { this.command('/chat', { text }); }
   close({ leave = true } = {}) {
     this.closed = true; this.connected = false; clearTimeout(this.timer);
     if (leave) {

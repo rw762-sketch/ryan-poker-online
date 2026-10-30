@@ -27,8 +27,11 @@ export function styleAction(style, obs, rng, trials = 36) {
     case 'aggro': return strategicAction(obs, AGGRO, rng, trials);
     case 'station': return strategicAction(obs, STATION, rng, trials);
     case 'gto': return chooseBotDecision(obs, 'gto', rng);
+    case 'hardgto': return obs.opponents === 1 && obs.board.length ? chooseBotDecision(obs, 'gto', rng) : strategicAction(obs, TRAINED_POLICY, rng, trials);
     case 'neural': return chooseNeuralDecision(obs, { persona: PERSONA_KEYS[Math.floor(rng() * PERSONA_KEYS.length)], random: rng, trials: Math.max(48, trials) });
-    default: return chooseBotDecision(obs, 'easy', rng);
+    default:
+      if (style.startsWith('neural-')) return chooseNeuralDecision(obs, { persona: style.slice(7), random: rng, trials: Math.max(48, trials) });
+      return chooseBotDecision(obs, 'easy', rng);
   }
 }
 const legal = (g, d) => d.action !== 'raise' || (Number.isInteger(d.amount) && d.amount >= g.options().min && d.amount <= g.options().max);

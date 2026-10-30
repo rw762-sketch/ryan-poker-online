@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, extname } from 'node:path';
 import { PokerService } from './poker-service.mjs';
-import { askGroqTalk, claimTalk } from './groq-bot.mjs';
+import { askGroqTalk, askGroqChat, claimTalk } from './groq-bot.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
@@ -38,7 +38,7 @@ export function makeServer({ service = new PokerService(), allowedOrigins = [] }
         if (path === '/table-talk') {
           if (!process.env.GROQ_API_KEY) throw Object.assign(Error('Live AI is not configured on this server.'), { status: 503 });
           if (!claimTalk(req.socket.remoteAddress || 'local')) throw Object.assign(Error('Live AI is busy. The table will use the neural bots for now.'), { status: 429 });
-          const move = await askGroqTalk(body.observation, body.name, process.env.GROQ_API_KEY);
+          const move = body.chat ? await askGroqChat(body.chat, body.name, process.env.GROQ_API_KEY) : await askGroqTalk(body.observation, body.name, process.env.GROQ_API_KEY);
           if (!move) throw Object.assign(Error('Live AI did not answer in time.'), { status: 504 });
           res.end(JSON.stringify(move)); return;
         }

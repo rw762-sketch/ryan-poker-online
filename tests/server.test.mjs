@@ -158,3 +158,16 @@ test('browser fetch receives its global receiver rather than the lobby client', 
   assert.equal(calls, 1);
   assert.equal(client.token, 'browser-session');
 });
+
+test('table chat reaches everyone, strips markup, and is rate limited', () => {
+  const f = fixture(), a = f.enter('Host'), b = f.enter('Guest');
+  const created = f.write('/create', a.token);
+  f.write('/join', b.token, { code: created.room });
+  f.write('/chat', a.token, { text: '  nice <b>hand</b>  ' });
+  const seen = f.service.handle('/poll', b.token).gifts.filter(e => e.kind === 'chat');
+  assert.equal(seen.length, 1);
+  assert.deepEqual({ from: seen[0].from, text: seen[0].text }, { from: 0, text: 'nice bhand/b' });
+  assert.throws(() => f.write('/chat', a.token, { text: '   ' }), /Type a message/);
+  for (let i = 0; i < 4; i++) f.write('/chat', a.token, { text: `hi ${i}` });
+  assert.throws(() => f.write('/chat', a.token, { text: 'too many' }), /few seconds/);
+});

@@ -1,4 +1,4 @@
-import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=2faa4b345575';
+import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=6e6dba662784';
 
 export const DEFAULT_POLICY = { openEarly:.64, openLate:.42, defend:.035, value:.61, aggression:.72, bluff:.055, size:.65 };
 export function positionOf(game, seat) {
@@ -30,6 +30,12 @@ export function readObservation(game) {
   const pressure = game.options().call / Math.max(20, game.pot);
   // Range profiles are model assumptions inferred from public betting, not hidden hands.
   const opponentRanges = others.map(p => {
+    // An all-in shove is only as strong as that player's shoving habit: people
+    // who shove often are shoving wide. Counts are public (everyone saw them).
+    if (/^Raise/.test(p.action) && p.allIn) {
+      const rate = (p.shoves || 0) / ((p.dealt || 0) + 6);
+      return rate > .3 ? 'random' : rate > .15 ? 'loose' : 'standard';
+    }
     if (/^Raise/.test(p.action)) return pressure > .5 || (game.current >= 160 && pressure >= .25) ? 'tight' : 'standard';
     if (raised && p.bet === game.current) return 'standard';
     return game.board.length || p.total > 20 ? 'loose' : 'random';

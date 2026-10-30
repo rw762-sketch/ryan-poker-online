@@ -1230,7 +1230,7 @@ body.arena-page {
 .seat-identity { position: relative; }
 .talk-bubble {
   position: absolute;
-  bottom: calc(100% + 54px);
+  bottom: calc(100% + 4px);
   left: 50%;
   translate: -50% 0;
   z-index: 12;
@@ -1257,7 +1257,8 @@ body.arena-page {
   transform: translateX(-50%) rotate(45deg);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .talk-bubble { animation: talk-in 260ms cubic-bezier(.2, 1.3, .4, 1) both, talk-out 300ms ease 3.5s both; }
+  .talk-bubble { animation: talk-in 260ms cubic-bezier(.2, 1.3, .4, 1) both, talk-out 300ms ease 3.5s forwards; }
+  .talk-bubble.settled { animation: talk-out 300ms ease var(--left, 3s) forwards; }
   @keyframes talk-in { from { opacity: 0; transform: translateY(6px) scale(.9); } }
   @keyframes talk-out { to { opacity: 0; transform: translateY(-4px); } }
 }
@@ -1384,3 +1385,199 @@ footer button:not(:disabled):hover { background: none; color: var(--brass); }
 .table-page .ai-memory { border: 0; }
 .table-page .difficulty-panel + details,
 .table-page hr { display: none; }
+
+/* ===== Pass 4: hand-made touches ===== */
+/* Stakes scribbled in the corner, not a stat box. */
+.table-page .stakes {
+  font-family: var(--hand);
+  font-size: 24px;
+  color: var(--muted);
+  rotate: -2.5deg;
+  gap: 10px;
+}
+.table-page .stakes strong { font-family: var(--hand); font-size: 28px; color: var(--brass); font-weight: 600; }
+.table-page .stakes > span { font-family: var(--hand); font-size: 22px; letter-spacing: 0; border: 0; padding: 0; color: var(--muted); text-transform: lowercase; }
+
+/* Difficulty: real chips you pick up off the rail. */
+.table-page .difficulty-options { gap: 10px 12px; align-items: center; }
+.table-page .difficulty-option {
+  --chip: #3a4157;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: repeating-conic-gradient(var(--chip) 0 22.5deg, #e9e4d6 22.5deg 33.75deg, var(--chip) 33.75deg 45deg);
+  box-shadow: inset 0 0 0 7px var(--chip), 0 4px 0 #05060a, 0 8px 14px #0008;
+  rotate: var(--r, 0deg);
+}
+.table-page .difficulty-option:nth-child(2) { --chip: #2f8a5f; --r: -8deg; }
+.table-page .difficulty-option:nth-child(3) { --chip: #2f62d6; --r: 6deg; }
+.table-page .difficulty-option:nth-child(4) { --chip: #b8262d; --r: -4deg; }
+.table-page .difficulty-option:nth-child(5) { --chip: #1c1d24; --r: 9deg; }
+.table-page .difficulty-option:nth-child(6) { --chip: #7b3fc4; --r: -6deg; }
+.table-page .difficulty-option:nth-child(7) { --chip: #c47a1e; --r: 3deg; }
+.table-page .difficulty-option .difficulty-title {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--chip);
+  border: 1.5px dashed #fff6;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.table-page .difficulty-option:hover { background: repeating-conic-gradient(var(--chip) 0 22.5deg, #fff 22.5deg 33.75deg, var(--chip) 33.75deg 45deg); }
+.table-page .difficulty-option:has(input:checked) {
+  background: repeating-conic-gradient(var(--chip) 0 22.5deg, #fff 22.5deg 33.75deg, var(--chip) 33.75deg 45deg);
+  box-shadow: inset 0 0 0 7px var(--chip), 0 0 0 3px var(--brass), 0 10px 0 #05060a, 0 18px 26px #000a;
+  translate: 0 -8px;
+  rotate: 0deg;
+}
+.table-page .difficulty-option:has(input:checked) .difficulty-title { color: #fff; }
+@media (max-width: 520px) {
+  .table-page .difficulty-option { width: 54px; height: 54px; }
+  .table-page .difficulty-option .difficulty-title { width: 36px; height: 36px; font-size: 10px; }
+}
+
+/* Whoever is thinking gets a little thought bubble. */
+.seat.active:not(.seat-0)::before {
+  content: "";
+  position: absolute;
+  left: calc(50% + 22px);
+  top: -14px;
+  width: 46px;
+  height: 22px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle, var(--card-ink) 3px, transparent 3.5px) 9px 50% / 14px 100% repeat-x,
+    #fbfaf6;
+  box-shadow: 0 6px 14px #0009;
+  z-index: 11;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .seat.active:not(.seat-0)::before { animation: thinking-float 1.4s ease-in-out infinite; }
+  @keyframes thinking-float { 50% { translate: 0 -4px; opacity: .7; } }
+}
+
+/* Hand history on a scorepad. */
+.table-page main > details:has(#log) {
+  max-width: 560px;
+  margin: 26px auto 10px;
+  padding: 16px 22px 18px;
+  rotate: -0.8deg;
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, transparent 38px, #d9544f55 38px 39.5px, transparent 39.5px),
+    repeating-linear-gradient(180deg, transparent 0 29px, #6b8fd433 29px 30px),
+    #f3eedf;
+  color: #2a2c38;
+  box-shadow: 0 1px 0 #d9d2bd, 0 18px 40px #000a;
+}
+.table-page main > details:has(#log) summary {
+  font-family: var(--hand);
+  font-size: 28px;
+  color: #2a2c38;
+  padding-left: 26px;
+  list-style: none;
+  cursor: pointer;
+}
+.table-page main > details:has(#log) summary::-webkit-details-marker { display: none; }
+.table-page main > details:has(#log) summary::after { content: " ✎"; color: #b8262d; }
+#log {
+  font-family: var(--hand);
+  font-size: 21px;
+  line-height: 30px;
+  color: #2a2c38;
+  padding-left: 46px;
+  margin: 4px 0 0;
+  max-height: 330px;
+  overflow: auto;
+}
+#log li::marker { color: #b8262d; }
+
+/* ===== Pass 5: springs and a lamp that follows you ===== */
+/* Spring curves (Apple-style perceptual duration + bounce), sampled for CSS. */
+:root {
+  --spring: linear(0, 0.054, 0.167, 0.298, 0.425, 0.54, 0.637, 0.718, 0.783, 0.834, 0.874, 0.905, 0.929, 0.947, 0.96, 0.971, 0.978, 0.984, 0.988, 0.991, 0.994, 0.995, 0.997, 0.998, 0.998, 0.999, 0.999, 0.999, 1);
+  --spring-brisk: linear(0, 0.055, 0.176, 0.325, 0.47, 0.604, 0.715, 0.805, 0.873, 0.922, 0.958, 0.981, 0.996, 1.005, 1.009, 1.011, 1.01, 1.009, 1.008, 1.006, 1.005, 1.003, 1.002, 1.002, 1.001, 1.001, 1, 1, 1);
+  --spring-bouncy: linear(0, 0.057, 0.187, 0.349, 0.514, 0.664, 0.79, 0.889, 0.961, 1.008, 1.037, 1.05, 1.054, 1.05, 1.043, 1.034, 1.025, 1.017, 1.011, 1.006, 1.002, 0.999, 0.998, 0.997, 0.997, 0.997, 0.998, 0.998, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Transitions (not one-shot keyframes) so a second click retargets smoothly. */
+  button, .chip-button, .app-nav a, .practice-links a, .scene-more a {
+    transition: transform 670ms var(--spring-brisk), translate 670ms var(--spring-brisk), scale 670ms var(--spring-brisk),
+      background-color 200ms ease, border-color 200ms ease, color 200ms ease, box-shadow 300ms ease;
+  }
+  .table-page .difficulty-option {
+    transition: translate 720ms var(--spring-bouncy), rotate 720ms var(--spring-bouncy), box-shadow 300ms ease, background 200ms ease;
+  }
+  .table-page .difficulty-option:has(input:checked) { animation: none; }
+  .table-page .difficulty-option:hover { translate: 0 -3px; }
+  .table-page .difficulty-option:has(input:checked):hover { translate: 0 -10px; }
+  button:not(:disabled):active,
+  .table-page .difficulty-option:active { scale: .95; transition-duration: 90ms; }
+  .chip-button { transition: transform 800ms var(--spring-bouncy), box-shadow 300ms ease; }
+  .nameplate { transition: border-color 250ms ease, box-shadow 400ms ease, background 300ms ease; }
+  .seat .card, #board .card { transition: rotate 670ms var(--spring); }
+  .seat-0 .card:hover { rotate: 0deg; translate: 0 -8px; transition: rotate 450ms var(--spring-brisk), translate 450ms var(--spring-brisk); }
+  .seat-0 .card { transition: rotate 450ms var(--spring-brisk), translate 450ms var(--spring-brisk); }
+  .actions button { animation-timing-function: var(--spring-brisk); animation-duration: 520ms; }
+  dialog[open] { animation: dialog-in 600ms var(--spring-brisk) both; }
+  @keyframes dialog-in { from { opacity: 0; scale: .96; translate: 0 10px; } }
+}
+
+/* The lamp: a soft highlight on the felt that drifts toward your pointer. */
+.felt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle 240px at var(--lamp-x, 50%) var(--lamp-y, 38%), #ffffff14, transparent 70%);
+  transition: background-position 300ms ease;
+}
+
+/* Table chat: a line you write on, not a form box. */
+.table-chat {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 460px;
+  margin: 2px auto 6px;
+  padding: 4px 4px 4px 16px;
+  border-radius: 999px;
+  background: #ffffff08;
+  border: 1px solid transparent;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.table-chat:focus-within { border-color: var(--line-strong); background: #ffffff0d; }
+.table-chat input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-family: var(--hand);
+  font-size: 22px;
+  padding: 6px 0;
+  outline: none;
+}
+.table-chat input::placeholder { color: #5f6880; }
+.table-chat button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--brass);
+  color: var(--card-ink);
+  font-weight: 800;
+}
+.table-chat:focus-within { outline: none; }
+.seat-0 > .talk-bubble { bottom: calc(100% + 2px); }

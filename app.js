@@ -1,18 +1,20 @@
-import { playerOutcome } from './player-outcome.js?v=2faa4b345575';
-import { celebrateTable } from './celebration.js?v=2faa4b345575';
-import { gtoThinkTime } from './gto.js?v=2faa4b345575';
-import { DRINKS, TableGifts, validGift } from './table-gifts.js?v=2faa4b345575';
-import { PlayerMemory } from './player-memory.js?v=2faa4b345575';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=2faa4b345575';
-import { tableSnapshot, animateTable } from './motion.js?v=2faa4b345575';
-import { LobbyClient, ServerRoom } from './server-room.js?v=2faa4b345575';
-import { MULTIPLAYER_API_URL } from './network-config.js?v=2faa4b345575';
-import { bindLobby } from './lobby.js?v=2faa4b345575';
-import { OnlineRoom } from './multiplayer.js?v=2faa4b345575';
-import { readObservation } from './strategy.js?v=2faa4b345575';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=2faa4b345575';
+import { playerOutcome } from './player-outcome.js?v=6e6dba662784';
+import { celebrateTable } from './celebration.js?v=6e6dba662784';
+import { gtoThinkTime } from './gto.js?v=6e6dba662784';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=6e6dba662784';
+import { PlayerMemory } from './player-memory.js?v=6e6dba662784';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=6e6dba662784';
+import { tableSnapshot, animateTable } from './motion.js?v=6e6dba662784';
+import { LobbyClient, ServerRoom } from './server-room.js?v=6e6dba662784';
+import { MULTIPLAYER_API_URL } from './network-config.js?v=6e6dba662784';
+import { bindLobby } from './lobby.js?v=6e6dba662784';
+import { OnlineRoom } from './multiplayer.js?v=6e6dba662784';
+import { readObservation } from './strategy.js?v=6e6dba662784';
+import { randomStyle, driftStyle } from './neural-policy.js?v=6e6dba662784';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=6e6dba662784';
 let selectedDifficulty = 'medium';
-try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); } catch {}
+// GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
+try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
 let handDifficulty = selectedDifficulty;
 
 const $ = id => document.getElementById(id);
@@ -24,11 +26,14 @@ const MEMORY_KEY='river-room-player-memory-v1';
 let playerMemory;
 try { playerMemory=new PlayerMemory(JSON.parse(localStorage.getItem(MEMORY_KEY))); } catch { playerMemory=new PlayerMemory(); }
 function savePlayerMemory() { try { localStorage.setItem(MEMORY_KEY,JSON.stringify(playerMemory.save())); } catch {} }
+// Each bot seat draws its own style; it drifts a little every hand (more after a big loss).
+let botStyles = Array.from({ length:SEATS }, () => randomStyle());
 function soloAction(action,amount) {
   const observed=playerMemory.capture(game,action,amount);
   if(!game.act(action,amount))return false;
   playerMemory.record(observed);
-  if(game.done){playerMemory.finish();savePlayerMemory();}
+  if(game.done){playerMemory.finish();savePlayerMemory();
+    botStyles=botStyles.map((style,i)=>{ const award=(game.awards||[]).find(a=>a.seat===i); return i?driftStyle(style,award?award.profit:-game.players[i].total):style; });}
   return true;
 }
 let timer = null;
@@ -90,6 +95,7 @@ function renderTable(v) {
       <div class="player-action">${escape(action || ' ')}</div></div>`;
   }).join('');
   $('log').innerHTML = v.logs.map(line => `<li>${escape(line)}</li>`).join('');
+  placeTalk(false);
   const player = v.players[0];
   $('handName').textContent = v.board.length >= 3 && !player.folded && player.cards.length === 2
     ? labels[evaluate([...player.cards, ...v.board])[0]] : 'Your two cards are private.';
@@ -195,7 +201,9 @@ function thinkTime() {
   if (handDifficulty === 'gto') return gtoThinkTime({seat:game.turn,options:game.options(),pot:game.pot});
   // Bigger pots and facing bets take a little longer, like a person would.
   const facing = game.options().owed > 0 ? 350 : 0;
-  return 650 + Math.random() * 700 + facing + Math.min(700, game.pot / 3);
+  // Mostly quick, sometimes a long tank, the way people actually play.
+  const tank = Math.random() < .07 ? 1400 + Math.random() * 2200 : 0;
+  return 550 + Math.random() * 900 + facing + Math.min(700, game.pot / 3) + tank;
 }
 async function liveMove(seat, hand) {
   const o = readObservation(game);
@@ -204,23 +212,82 @@ async function liveMove(seat, hand) {
   try {
     const response = await fetch(`${MULTIPLAYER_API_URL}/table-talk`, { method:'POST', headers:{ 'Content-Type':'application/json' },
       body:JSON.stringify({ name:game.players[seat].name, observation }), signal:AbortSignal.timeout(7500) });
-    if (!response.ok) return null;
+    if (!response.ok) { liveOffline = true; renderDifficulty(); return null; }
     const move = await response.json();
+    if (liveOffline) { liveOffline = false; renderDifficulty(); }
     if (game.hand !== hand || game.turn !== seat || game.done) return 'stale';
     const options = game.options();
     if (!['fold','call','raise','allin'].includes(move.action)) return null;
     if (move.action === 'raise' && !(Number.isInteger(move.amount) && options.canRaise && move.amount >= options.min && move.amount <= options.max)) return null;
     return move;
-  } catch { return null; }
+  } catch { liveOffline = true; renderDifficulty(); return null; }
 }
+let liveOffline = false;
+// Table talk survives the table re-rendering while the next bot acts.
+let talk = null;
+function placeTalk(fresh) {
+  if (!talk || Date.now() > talk.until) { talk = null; return; }
+  const target = document.querySelector(`.seat-${talk.seat}`);
+  if (!target || target.querySelector('.talk-bubble')) return;
+  const bubble = document.createElement('div');
+  bubble.className = fresh ? 'talk-bubble' : 'talk-bubble settled';
+  bubble.textContent = talk.text; bubble.setAttribute('role', 'status');
+  bubble.style.setProperty('--left', `${Math.max(0, talk.until - Date.now() - 300)}ms`);
+  target.append(bubble);
+}
+// Typed chat. In rooms it goes to everyone; at the solo table the bots may answer.
+const SOLO_REPLIES = {
+  calm: ['good luck', 'we’ll see', 'nice', 'hm', 'fair enough', 'ha'],
+  bold: ['bring it', 'you sure about that?', 'big talk', 'show me', 'not folding this time'],
+  tilted: ['…', 'just deal', 'unreal', 'not now'],
+};
+function botReply(text) {
+  const live = game.players.flatMap((p, i) => i && !p.folded && p.stack > 0 ? [i] : []);
+  if (!live.length || Math.random() < .35) return;
+  const seat = live[Math.floor(Math.random() * live.length)];
+  const style = botStyles[seat] || {};
+  const mood = style.tilt > .3 ? 'tilted' : style.aggressive > .6 ? 'bold' : 'calm';
+  const pool = SOLO_REPLIES[mood];
+  const reply = /\?$/.test(text) && mood === 'calm' ? 'maybe' : pool[Math.floor(Math.random() * pool.length)];
+  setTimeout(() => showTalk(seat, reply), 900 + Math.random() * 1600);
+}
+async function liveChatReply(text) {
+  const live = game.players.flatMap((p, i) => i && !p.folded && p.stack > 0 ? [i] : []);
+  if (!live.length) return false;
+  const seat = live[Math.floor(Math.random() * live.length)];
+  try {
+    const response = await fetch(`${MULTIPLAYER_API_URL}/table-talk`, { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ name:game.players[seat].name, chat:text.slice(0, 120), observation:null }), signal:AbortSignal.timeout(7000) });
+    if (!response.ok) return false;
+    const data = await response.json();
+    if (data.say) showTalk(seat, data.say);
+    return true;
+  } catch { return false; }
+}
+function receiveChat(chat) {
+  if (!validChat(chat)) return;
+  const me = room?.me ?? 0, players = room?.view?.players ?? game.players;
+  const seat = (chat.from - me + SEATS) % SEATS;
+  showTalk(seat, chat.text);
+  const log = $('log'), line = document.createElement('li');
+  line.textContent = `${players[chat.from]?.name || 'Someone'}: “${chat.text}”`;
+  log?.prepend(line);
+}
+$('chatForm')?.addEventListener('submit', async event => {
+  event.preventDefault();
+  const text = cleanChat($('chatInput').value);
+  if (!text) return;
+  $('chatInput').value = '';
+  if (room) { try { room.chat(text); } catch (error) { showRoomError(error.message); } return; }
+  receiveChat({ kind:'chat', from:0, text });
+  if (handDifficulty === 'live' && !liveOffline && await liveChatReply(text)) return;
+  botReply(text);
+});
 function showTalk(seat, text) {
   if (!text) return;
-  const target = document.querySelector(`.seat-${seat} .seat-identity`);
-  if (!target) return;
-  const bubble = document.createElement('div');
-  bubble.className = 'talk-bubble'; bubble.textContent = text; bubble.setAttribute('role', 'status');
-  target.append(bubble);
-  setTimeout(() => bubble.remove(), 3800);
+  talk = { seat, text, until: Date.now() + 3800 };
+  placeTalk(true);
+  setTimeout(() => { if (talk && Date.now() >= talk.until) { talk = null; document.querySelectorAll('.talk-bubble').forEach(b => b.remove()); } }, 3900);
 }
 function schedule() {
   clearTimeout(timer);
@@ -233,7 +300,9 @@ function schedule() {
       if (move === 'stale' || room || game.done || game.hand !== hand || game.turn !== seat) return;
       if (move) { act(move.action === 'allin' ? 'allin' : move.action, move.amount); showTalk(seat, move.say); return; }
     }
-    const decision = chooseBotAction(botObservation(game, playerMemory), handDifficulty);
+    const obs = botObservation(game, playerMemory);
+    obs.style = botStyles[game.turn];
+    const decision = chooseBotAction(obs, handDifficulty);
     act(decision.action, decision.amount);
   }, handDifficulty === 'live' ? 250 : thinkTime());
 }
@@ -244,7 +313,8 @@ function renderDifficulty() {
   document.querySelectorAll('input[name="difficulty"]').forEach(input => { input.checked = input.value === selectedDifficulty; });
   $('difficultyStatus').textContent = selectedDifficulty !== handDifficulty
     ? `${DIFFICULTIES[handDifficulty].name} this hand · ${DIFFICULTIES[selectedDifficulty].name} starts next hand`
-    : `${DIFFICULTIES[selectedDifficulty].name} opponents · ${DIFFICULTIES[selectedDifficulty].description}`;
+    : `${DIFFICULTIES[selectedDifficulty].name} opponents · ${DIFFICULTIES[selectedDifficulty].description}`
+      + (selectedDifficulty === 'live' && liveOffline ? ' The Live AI server isn’t answering, so the Neural bots are playing for now.' : '');
 }
 document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change', () => {
   if (room || !input.checked) return;
@@ -403,6 +473,7 @@ if (friendsPage) {
     const session = new RoomClass({
       client: lobbyClient,
       onGift: gift => { if (room === session) receiveGift(gift); },
+      onChat: chat => { if (room === session) receiveChat(chat); },
       onState: () => {
         if (room !== session) return;
         pendingAction = false;
@@ -454,6 +525,7 @@ $('restart').onclick = () => {
   if (!confirm(room ? (room.host ? 'Close this room for everyone?' : 'Leave this room?') : 'Start a new table with 1,000 chips each?')) return;
   room?.close();
   room = null;
+  botStyles = Array.from({ length:SEATS }, () => randomStyle());
   clearTimeout(pendingTimer);
   pendingAction = false;
   connectionMessage = '';
@@ -507,5 +579,25 @@ if (context?.registerTool) {
     } },
   ]) {
     try { Promise.resolve(context.registerTool(tool, { signal:lifecycle.signal })).catch(() => {}); } catch {}
+  }
+}
+
+// The lamp over the table eases toward the pointer (no motion for reduced-motion users).
+{
+  const arena = document.querySelector('.arena'), felt = arena?.querySelector('.felt');
+  if (felt && !matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(hover: hover)').matches) {
+    let target = [50, 38], current = [50, 38], frame = 0;
+    const step = () => {
+      current = current.map((c, i) => c + (target[i] - c) * .08);
+      felt.style.setProperty('--lamp-x', `${current[0].toFixed(2)}%`);
+      felt.style.setProperty('--lamp-y', `${current[1].toFixed(2)}%`);
+      frame = Math.abs(current[0] - target[0]) + Math.abs(current[1] - target[1]) > .05 ? requestAnimationFrame(step) : 0;
+    };
+    arena.addEventListener('pointermove', event => {
+      const r = felt.getBoundingClientRect();
+      target = [Math.max(10, Math.min(90, (event.clientX - r.left) / r.width * 100)), Math.max(10, Math.min(90, (event.clientY - r.top) / r.height * 100))];
+      if (!frame) frame = requestAnimationFrame(step);
+    });
+    arena.addEventListener('pointerleave', () => { target = [50, 38]; if (!frame) frame = requestAnimationFrame(step); });
   }
 }

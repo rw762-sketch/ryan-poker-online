@@ -1,6 +1,6 @@
 import { storedRequest } from './cloud-state.mjs';
-import { claimBotJob, runBotJob, askGroqTalk, claimTalk } from './groq-bot.mjs';
-const endpoints = new Set(['/health', '/session', '/lobby', '/poll', '/create', '/join', '/action', '/deal', '/gift', '/leave', '/bots', '/table-talk']);
+import { claimBotJob, runBotJob, askGroqTalk, askGroqChat, claimTalk } from './groq-bot.mjs';
+const endpoints = new Set(['/health', '/session', '/lobby', '/poll', '/create', '/join', '/action', '/deal', '/gift', '/leave', '/bots', '/table-talk', '/chat']);
 const readPaths = new Set(['/health', '/lobby', '/poll']);
 export async function api(request, env, ctx) {
   const url = new URL(request.url);
@@ -36,7 +36,7 @@ export async function api(request, env, ctx) {
       if (!env.GROQ_API_KEY) return reply({ error: 'Live AI is not configured on this server.' }, 503);
       const client = request.headers.get('CF-Connecting-IP') || 'anonymous';
       if (!claimTalk(client)) return reply({ error: 'Live AI is busy. The table will use the neural bots for now.' }, 429);
-      const move = await askGroqTalk(body.observation, body.name, env.GROQ_API_KEY);
+      const move = body.chat ? await askGroqChat(body.chat, body.name, env.GROQ_API_KEY) : await askGroqTalk(body.observation, body.name, env.GROQ_API_KEY);
       return move ? reply(move) : reply({ error: 'Live AI did not answer in time.' }, 504);
     }
     if (!env.DB) return reply({ error: 'The game server is temporarily unavailable. Try again shortly.' }, 503);

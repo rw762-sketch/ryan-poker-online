@@ -30,3 +30,24 @@ export class TableGifts {
     return gift;
   }
 }
+
+// Table chat: short plain-text lines, rate limited per seat. Shares the gift
+// limiter's map (string keys) so saved rooms need no new fields.
+export function cleanChat(text) {
+  if (typeof text !== 'string') return '';
+  return text.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+export function validChat(chat) {
+  return chat && chat.kind === 'chat' && Number.isInteger(chat.from) && chat.from >= 0 && chat.from < 6 &&
+    typeof chat.text === 'string' && chat.text.length > 0 && chat.text.length <= 120;
+}
+export function createChat(limiter, from, text, members, now = Date.now()) {
+  const clean = cleanChat(text);
+  if (!clean) throw Error('Type a message first.');
+  if (!members[from]?.online) throw Error('Reconnect before chatting.');
+  const key = `chat-${from}`, recent = limiter.last.get(key) ?? [];
+  const window = (Array.isArray(recent) ? recent : []).filter(t => now - t < 10000);
+  if (window.length >= 5) throw Error('Easy there — a few seconds between messages.');
+  limiter.last.set(key, [...window, now]);
+  return { kind: 'chat', from, text: clean };
+}

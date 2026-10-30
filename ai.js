@@ -1,17 +1,17 @@
-import { gtoDecision } from './gto.js?v=2faa4b345575';
-import { learnBluffPolicy } from './opponent-model.js?v=2faa4b345575';
-import { adaptStrategy } from './player-memory.js?v=2faa4b345575';
-import { evaluate } from './engine.js?v=2faa4b345575';
-import { simulateEquity } from './poker-math.js?v=2faa4b345575';
-import { readObservation, strategicAction, DEFAULT_POLICY, boardTexture } from './strategy.js?v=2faa4b345575';
-import { TRAINED_POLICY } from './trained-policy.js?v=2faa4b345575';
-import { chooseNeuralDecision, SEAT_PERSONAS } from './neural-policy.js?v=2faa4b345575';
+import { gtoDecision } from './gto.js?v=6e6dba662784';
+import { learnBluffPolicy } from './opponent-model.js?v=6e6dba662784';
+import { adaptStrategy } from './player-memory.js?v=6e6dba662784';
+import { evaluate } from './engine.js?v=6e6dba662784';
+import { simulateEquity } from './poker-math.js?v=6e6dba662784';
+import { readObservation, strategicAction, DEFAULT_POLICY, boardTexture } from './strategy.js?v=6e6dba662784';
+import { TRAINED_POLICY } from './trained-policy.js?v=6e6dba662784';
+import { chooseNeuralDecision, SEAT_PERSONAS } from './neural-policy.js?v=6e6dba662784';
 export const DIFFICULTIES = {
   gto: { name:'GTO', description:'Expert play · GTO-inspired.' },
   easy: { name:'Easy', description:'A relaxed table.' },
   medium: { name:'Medium', description:'A steady challenge.' },
-  hard: { name:'Hard', description:'A tougher table.' },
-  neural: { name:'Neural', description:'Trained neural net · five personalities.' },
+  hard: { name:'Hard', description:'The strongest hand-built bots (GTO merged in).' },
+  neural: { name:'Neural', description:'Trained neural net · every bot has its own style.' },
   live: { name:'Live AI', description:'LLM players who talk at the table.' },
 };
 export const normalizeDifficulty = value => Object.hasOwn(DIFFICULTIES, value) ? value : 'medium';
@@ -39,7 +39,7 @@ export function chooseBotDecision(obs, difficulty = 'medium', random = Math.rand
   const level = normalizeDifficulty(difficulty);
   if(level==='gto')return gtoDecision(obs,random);
   // Live AI falls back to the neural bots whenever the server is unavailable.
-  if(level==='neural'||level==='live')return chooseNeuralDecision(obs,{persona:SEAT_PERSONAS[obs.seat]||'shark',random});
+  if(level==='neural'||level==='live')return chooseNeuralDecision(obs,{persona:obs.style||SEAT_PERSONAS[obs.seat]||'shark',random});
   if (level !== 'easy') {
     const base={...(level==='hard'?TRAINED_POLICY:DEFAULT_POLICY)};
     // Distinct tendencies remain small; every bot responds to the same public evidence.

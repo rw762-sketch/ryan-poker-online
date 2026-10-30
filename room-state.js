@@ -1,8 +1,9 @@
-import { PlayerMemory } from './player-memory.js?v=2faa4b345575';
-import { playerOutcome } from './player-outcome.js?v=2faa4b345575';
-import { Poker, SEATS, SEAT_NAMES } from './engine.js?v=2faa4b345575';
+import { PlayerMemory } from './player-memory.js?v=6e6dba662784';
+import { playerOutcome } from './player-outcome.js?v=6e6dba662784';
+import { Poker, SEATS, SEAT_NAMES } from './engine.js?v=6e6dba662784';
 
-import { botObservation, chooseBotAction } from './ai.js?v=2faa4b345575';
+import { botObservation, chooseBotAction } from './ai.js?v=6e6dba662784';
+import { randomStyle, driftStyle } from './neural-policy.js?v=6e6dba662784';
 
 export const MAX_PLAYERS = SEATS;
 export const TURN_MS = 45000;
@@ -53,7 +54,7 @@ export class HostTable {
       if (!empty.length) throw Error('This room is full.');
       for (const i of operation === 'fill' ? empty : empty.slice(0, 1)) {
         const name = `${SEAT_NAMES[i]} AI`;
-        this.members[i] = { name, bot: true, online: true, seen: now, token: null };
+        this.members[i] = { name, bot: true, online: true, seen: now, token: null, style: randomStyle() };
         Object.assign(this.game.players[i], { name, stack: 1000 });
       }
     } else if (operation === 'remove') {
@@ -103,7 +104,10 @@ export class HostTable {
     const observed = this.memory.capture(this.game, message.action, message.amount);
     if (!this.game.act(message.action, message.amount)) throw Error('That bet is not allowed.');
     this.memory.record(observed);
-    if (this.game.done) { this.memory.finish(); this.memory.history = this.memory.history.slice(-24); }
+    if (this.game.done) {
+      this.memory.finish(); this.memory.history = this.memory.history.slice(-24);
+      this.members.forEach((m, i) => { if (m?.bot && m.style) { const award = (this.game.awards || []).find(a => a.seat === i); m.style = driftStyle(m.style, award ? award.profit : -this.game.players[i].total); } });
+    }
     this.changed(now);
   }
   tick(now = Date.now(), offlineMs = OFFLINE_MS, includeHost = false) {
@@ -122,7 +126,9 @@ export class HostTable {
         if (this.apiBots && this.apiSkipDeadline !== this.deadline &&
             now < this.deadline - TURN_MS + 9000) return changed;
         if (now >= this.deadline - TURN_MS + 1200) {
-          const decision = chooseBotAction(botObservation(this.game, this.memory), 'medium');
+          const obs = botObservation(this.game, this.memory);
+          obs.style = member.style || randomStyle();
+          const decision = chooseBotAction(obs, 'neural');
           this.act(this.game.turn, { ...decision, version: this.version }, now);
           return true;
         }

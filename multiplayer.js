@@ -1,7 +1,7 @@
-import { peerConfiguration } from './network-config.js?v=2faa4b345575';
-import { SEATS } from './engine.js?v=2faa4b345575';
-import { TableGifts } from './table-gifts.js?v=2faa4b345575';
-import { HostTable } from './room-state.js?v=2faa4b345575';
+import { peerConfiguration } from './network-config.js?v=6e6dba662784';
+import { SEATS } from './engine.js?v=6e6dba662784';
+import { TableGifts, createChat, validChat } from './table-gifts.js?v=6e6dba662784';
+import { HostTable } from './room-state.js?v=6e6dba662784';
 const PREFIX = 'river-room-v1-';
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 let loading;
@@ -9,7 +9,7 @@ function loadPeer() {
   if (window.Peer) return Promise.resolve(window.Peer);
   if (!loading) loading = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = new URL('./vendor/peerjs-1.5.5.min.js?v=2faa4b345575', import.meta.url).href;
+    script.src = new URL('./vendor/peerjs-1.5.5.min.js?v=6e6dba662784', import.meta.url).href;
     script.onload = () => window.Peer ? resolve(window.Peer) : reject(Error('Multiplayer could not load.'));
     script.onerror = () => { loading = null; script.remove(); reject(Error('Multiplayer could not load. Check your connection and try again.')); };
     document.head.append(script);
@@ -35,7 +35,8 @@ export function networkMessage(error) {
 }
 
 export class OnlineRoom {
-  constructor({ onState, onStatus, onError, onGift = () => {} }) {
+  constructor({ onState, onStatus, onError, onGift = () => {}, onChat = () => {} }) {
+    this.onChat = onChat;
     this.onState = onState;
     this.onGift = onGift;
     this.gifts = new TableGifts();
@@ -143,6 +144,8 @@ export class OnlineRoom {
           resolve();
         } else if (message.type === 'gift' && admitted) {
           this.onGift(message.gift);
+        } else if (message.type === 'chat' && admitted && validChat(message.chat)) {
+          this.onChat(message.chat);
         } else if (message.type === 'error') {
           const error = typeof message.message === 'string' ? message.message.slice(0, 200) : 'Action rejected.';
           if (!admitted) { cleanup(); reject(Error(error)); }
@@ -202,6 +205,7 @@ export class OnlineRoom {
         if (Date.now() - lastAction < 120) return;
         lastAction = Date.now();
         if (message.type === 'gift') { this.shareGift(seat, message.to, message.drink); return; }
+        if (message.type === 'chat') { this.shareChat(seat, message.text); return; }
         if (message.type !== 'action') throw Error('Only the host can deal.');
         this.table.act(seat, message);
         this.broadcast();
@@ -246,6 +250,16 @@ export class OnlineRoom {
     const gift = this.gifts.create(from, to, drink, this.table.members);
     this.onGift(gift);
     for (const connection of this.connections.values()) this.send(connection, { type: 'gift', gift });
+  }
+  shareChat(from, text) {
+    const chat = createChat(this.gifts, from, text, this.table.members);
+    this.onChat(chat);
+    for (const connection of this.connections.values()) this.send(connection, { type: 'chat', chat });
+  }
+  chat(text) {
+    if (!this.connected || !this.view) throw Error('Reconnect before chatting.');
+    if (this.host) this.shareChat(0, text);
+    else this.send(this.connection, { type: 'chat', text });
   }
   buyDrink(to, drink) {
     if (!this.connected || !this.view) throw Error('Reconnect before sending a drink.');

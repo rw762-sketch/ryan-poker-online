@@ -136,3 +136,24 @@ export async function askGroqTalk(observation, name, key, fetcher = fetch) {
     return { ...move, say };
   } catch { return null; }
 }
+// A bot answers something the player typed at the solo table. No cards are sent.
+export async function askGroqChat(text, name, key, fetcher = fetch) {
+  const said = typeof text === 'string' ? text.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 120) : '';
+  if (!key || !said) return null;
+  const persona = PERSONA_PROMPTS[name] || `${String(name).slice(0, 18)}: a friendly regular.`;
+  try {
+    const response = await fetcher('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', signal: AbortSignal.timeout(6000),
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: GROQ_MODEL, max_completion_tokens: 300, reasoning_effort: 'low',
+        messages: [
+          { role: 'system', content: `You are ${persona} You sit at a friendly play-chips poker table. Reply to the other player in under 70 characters, casual and in character. Never reveal your cards. Keep it kind; no insults, no real-money talk.` },
+          { role: 'user', content: said },
+        ] }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const say = String(data.choices?.[0]?.message?.content || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 80);
+    return say ? { say } : null;
+  } catch { return null; }
+}

@@ -1,7 +1,7 @@
 const randomUUID = () => globalThis.crypto.randomUUID();
 const randomBytes = size => globalThis.crypto.getRandomValues(new Uint8Array(size));
 import { HostTable, cleanName } from '../room-state.js';
-import { TableGifts } from '../table-gifts.js';
+import { TableGifts, createChat } from '../table-gifts.js';
 
 export const PRESENCE_MS = 30000;
 const RETAIN_MS = 30 * 60 * 1000;
@@ -100,6 +100,10 @@ export class PokerService {
       else if (path === '/gift') {
         const gift = room.gifts.create(session.seat, body.to, body.drink, room.table.members, this.now());
         room.events.push({ ...gift, id: room.nextEvent++ });
+        room.events = room.events.slice(-40);
+      } else if (path === '/chat') {
+        const chat = createChat(room.gifts, session.seat, body.text, room.table.members, this.now());
+        room.events.push({ ...chat, id: room.nextEvent++ });
         room.events = room.events.slice(-40);
       } else if (path === '/leave') {
         if (session.seat === 0) this.endRoom(session.room);
