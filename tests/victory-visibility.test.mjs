@@ -20,7 +20,7 @@ test('only the winning viewer receives a victory banner or confetti, in every se
       const g=new Poker();g.hand=1;g.dealer=0;g.pot=400;
       g.board=[card(2,1),card(5,1),card(9,1),card(13,0),card(3,3)];
       const hands=[[card(10,1),card(8,1)],[card(14,2),card(12,0)],[card(11,2),card(7,3)],[card(4,0),card(6,3)]];
-      g.players.forEach((p,i)=>Object.assign(p,{cards:hands[(i-winner+4)%4],stack:0,total:100,folded:false,allIn:i===winner&&allIn}));
+      g.players.forEach((p,i)=>Object.assign(p,i<4?{cards:hands[(i-winner+4)%4],stack:0,total:100,folded:false,allIn:i===winner&&allIn}:{cards:[],stack:0,total:0,folded:true,allIn:false}));
       g.showdown();
       const table=new HostTable('Host');table.game=g;
       for(const viewer of [0,1,2,3]) {

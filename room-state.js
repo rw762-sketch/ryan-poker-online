@@ -1,10 +1,10 @@
-import { PlayerMemory } from './player-memory.js?v=23285c79844b';
-import { playerOutcome } from './player-outcome.js?v=23285c79844b';
-import { Poker } from './engine.js?v=23285c79844b';
+import { PlayerMemory } from './player-memory.js?v=7710ac3987fa';
+import { playerOutcome } from './player-outcome.js?v=7710ac3987fa';
+import { Poker, SEATS, SEAT_NAMES } from './engine.js?v=7710ac3987fa';
 
-import { botObservation, chooseBotAction } from './ai.js?v=23285c79844b';
+import { botObservation, chooseBotAction } from './ai.js?v=7710ac3987fa';
 
-export const MAX_PLAYERS = 4;
+export const MAX_PLAYERS = SEATS;
 export const TURN_MS = 45000;
 export const OFFLINE_MS = 15000;
 export function cleanName(value) {
@@ -20,7 +20,7 @@ export class HostTable {
     this.game = new Poker();
     this.memory = new PlayerMemory();
     this.game.players.forEach(p => Object.assign(p, { name: 'Open seat', stack: 0, folded: true }));
-    this.members = Array(4).fill(null);
+    this.members = Array(SEATS).fill(null);
     this.members[0] = { name: cleanName(name), online: true, seen: now, token: null };
     Object.assign(this.game.players[0], { name: this.members[0].name, stack: 1000 });
     this.version = 0;
@@ -52,7 +52,7 @@ export class HostTable {
       const empty = this.members.flatMap((m, i) => !m ? [i] : []);
       if (!empty.length) throw Error('This room is full.');
       for (const i of operation === 'fill' ? empty : empty.slice(0, 1)) {
-        const name = ['','Jules AI','Morgan AI','Alex AI'][i];
+        const name = `${SEAT_NAMES[i]} AI`;
         this.members[i] = { name, bot: true, online: true, seen: now, token: null };
         Object.assign(this.game.players[i], { name, stack: 1000 });
       }

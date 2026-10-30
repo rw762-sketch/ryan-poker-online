@@ -37,7 +37,7 @@ function match(policy, seed, baseline=false, record=false, trials=40) {
     if(!g.act(d.action,d.amount))throw Error('Illegal generated action');
   }
   if(!g.done)throw Error('Sample hand did not terminate');
-  if(g.players.reduce((n,p)=>n+p.stack,0)!==4000)throw Error('Chip conservation failure');
+  if(g.players.reduce((n,p)=>n+p.stack,0)!==6000)throw Error('Chip conservation failure');
   if(record)samples.push({seed,dealer:g.dealer,board:g.board,actions,result:g.result,heroNet:g.players[0].stack-1000});
   return (g.players[0].stack-1000)/20;
 }

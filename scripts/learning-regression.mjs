@@ -24,7 +24,7 @@ for(let session=0;session<10;session++){
    }
    if(!g.act(action,amount))throw Error('Illegal learning sample');memory.record(event);totalActions++;
   }
-  if(!g.done||g.players.reduce((s,p)=>s+p.stack,0)!==4000)throw Error('Invalid completed learning hand');memory.finish();
+  if(!g.done||g.players.reduce((s,p)=>s+p.stack,0)!==6000)throw Error('Invalid completed learning hand');memory.finish();
   if(hand===599){const restored=new PlayerMemory(JSON.parse(JSON.stringify(memory.save())));for(let seat=0;seat<4;seat++){const context={street:1,price:.2,spr:2,opponents:1};if(JSON.stringify(restored.predictFold(seat,context))!==JSON.stringify(memory.predictFold(seat,context)))throw Error('Persistence changed model');}}
  }
  sessions.push({session,responses:n,modelBrier:modelLoss/n,baselineBrier:baseLoss/n,delta:(modelLoss-baseLoss)/n,activePredictions:active});console.log(JSON.stringify(sessions.at(-1)));

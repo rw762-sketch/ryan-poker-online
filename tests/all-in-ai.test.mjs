@@ -6,7 +6,7 @@ import { PokerService } from '../server/poker-service.mjs';
 import { encode, decode } from '../server/cloud-state.mjs';
 import { celebrationEvent } from '../celebration.js';
 
-function headsUp() { const g = new Poker(); g.players[2].stack = g.players[3].stack = 0; g.start(); return g; }
+function headsUp() { const g = new Poker(); g.players.forEach((p, i) => { if (i > 1) p.stack = 0; }); g.start(); return g; }
 test('all-in raises the full stack, short calls conserve chips, and awards survive payout', () => {
   const g = headsUp(); g.players[1].stack = 480; // 500 starting chips including blind
   assert.equal(g.act('allin'), true);
@@ -33,7 +33,7 @@ test('AI seats are host-only, removable before dealing, private, and do not time
   const table = new HostTable('Host', 1000);
   assert.throws(()=>table.manageAI(1,'fill',null,table.version,1000), /Only the host/);
   table.manageAI(0,'fill',null,table.version,1000);
-  assert.equal(table.members.filter(m=>m?.bot).length, 3);
+  assert.equal(table.members.filter(m=>m?.bot).length, 5);
   assert.throws(()=>table.manageAI(0,'add',null,table.version,1000), /full/);
   table.manageAI(0,'remove',2,table.version,1000);
   table.join('Friend',crypto.randomUUID(),1000);
@@ -54,7 +54,7 @@ test('AI seats are host-only, removable before dealing, private, and do not time
   }
   assert.ok(table.game.done); assert.ok(moves<150);
   assert.ok(table.members.filter(m=>m.bot).every(m=>m.online));
-  assert.equal(table.game.players.reduce((n,p)=>n+p.stack,0),4000);
+  assert.equal(table.game.players.reduce((n,p)=>n+p.stack,0),6000);
 });
 test('persisted server AI moves once when due and duplicate add requests do not add seats', () => {
   let now = 100000;

@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HostTable, TURN_MS, OFFLINE_MS } from '../room-state.js';
 const token = () => crypto.randomUUID();
-function table(count = 4) {
+function table(count = 6) {
   const room = new HostTable('Host', 1000);
   const tokens = [];
   for (let i = 1; i < count; i++) { tokens.push(token()); room.join(`Guest ${i}`, tokens.at(-1), 1000); }
   return { room, tokens };
 }
 
-test('2–4 players start with exactly two cards each and private views', () => {
-  for (const count of [2, 3, 4]) {
+test('2–6 players start with exactly two cards each and private views', () => {
+  for (const count of [2, 3, 4, 5, 6]) {
     const { room } = table(count);
     room.start(0, room.version, 1000);
     for (let seat = 0; seat < count; seat++) {
@@ -39,7 +39,7 @@ test('out-of-turn, invalid raise, and replayed actions cannot mutate chips', () 
   const { room } = table(); room.start(0, room.version);
   const seat = room.game.turn;
   const view = JSON.stringify(room.view(seat));
-  assert.throws(() => room.act((seat + 1) % 4, { action:'call', version:room.version }), /not your turn/);
+  assert.throws(() => room.act((seat + 1) % 6, { action:'call', version:room.version }), /not your turn/);
   assert.throws(() => room.act(seat, { action:'raise', amount:NaN, version:room.version }), /not allowed/);
   assert.throws(() => room.act(seat, { action:'raise', amount:999999, version:room.version }), /not allowed/);
   assert.equal(JSON.stringify(room.view(seat)), view);
@@ -47,7 +47,7 @@ test('out-of-turn, invalid raise, and replayed actions cannot mutate chips', () 
   room.act(seat, { action:'call', version });
   assert.throws(() => room.act(room.game.turn, { action:'call', version }), /changed/);
 });
-test('four-seat capacity, room lock, reconnect identity and token privacy', () => {
+test('six-seat capacity, room lock, reconnect identity and token privacy', () => {
   const { room, tokens } = table();
   assert.throws(() => room.join('Overflow', token()), /full/);
   assert.throws(() => room.join('Bad', 'short'), /Invalid session/);
@@ -57,7 +57,7 @@ test('four-seat capacity, room lock, reconnect identity and token privacy', () =
   assert.equal(room.members[1].name, 'Guest 1');
   assert.equal(room.members[1].online, true);
   assert.throws(() => room.join('Late', token()), /started/);
-  for (let seat = 0; seat < 4; seat++) for (const t of tokens) assert.ok(!JSON.stringify(room.view(seat)).includes(t));
+  for (let seat = 0; seat < 6; seat++) for (const t of tokens) assert.ok(!JSON.stringify(room.view(seat)).includes(t));
 });
 test('leaving the lobby releases a seat; disconnected players sit out new hands', () => {
   const { room } = table(3);

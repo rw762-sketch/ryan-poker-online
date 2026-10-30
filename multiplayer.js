@@ -1,6 +1,7 @@
-import { peerConfiguration } from './network-config.js?v=23285c79844b';
-import { TableGifts } from './table-gifts.js?v=23285c79844b';
-import { HostTable } from './room-state.js?v=23285c79844b';
+import { peerConfiguration } from './network-config.js?v=7710ac3987fa';
+import { SEATS } from './engine.js?v=7710ac3987fa';
+import { TableGifts } from './table-gifts.js?v=7710ac3987fa';
+import { HostTable } from './room-state.js?v=7710ac3987fa';
 const PREFIX = 'river-room-v1-';
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 let loading;
@@ -8,7 +9,7 @@ function loadPeer() {
   if (window.Peer) return Promise.resolve(window.Peer);
   if (!loading) loading = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = new URL('./vendor/peerjs-1.5.5.min.js?v=23285c79844b', import.meta.url).href;
+    script.src = new URL('./vendor/peerjs-1.5.5.min.js?v=7710ac3987fa', import.meta.url).href;
     script.onload = () => window.Peer ? resolve(window.Peer) : reject(Error('Multiplayer could not load.'));
     script.onerror = () => { loading = null; script.remove(); reject(Error('Multiplayer could not load. Check your connection and try again.')); };
     document.head.append(script);
@@ -274,8 +275,8 @@ export class OnlineRoom {
 }
 
 function validState(state) {
-  return state && Number.isInteger(state.version) && Number.isInteger(state.me) && state.me >= 0 && state.me < 4 &&
-    Array.isArray(state.players) && state.players.length === 4 &&
+  return state && Number.isInteger(state.version) && Number.isInteger(state.me) && state.me >= 0 && state.me < SEATS &&
+    Array.isArray(state.players) && state.players.length === SEATS &&
     state.players.every(p => p && typeof p.name === 'string' && p.name.length <= 18 && Array.isArray(p.cards) && p.cards.length <= 2 && p.cards.every(validCard)) &&
     Array.isArray(state.board) && state.board.length <= 5 && state.board.every(validCard) &&
     Array.isArray(state.logs) && state.logs.length <= 70 && state.logs.every(l => typeof l === 'string' && l.length < 500);

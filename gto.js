@@ -1,6 +1,6 @@
-import { inferOpponentRanges } from './range-model.js?v=23285c79844b';
-import { preflopStrength, rankHand, simulateEquity } from './poker-math.js?v=23285c79844b';
-import { boardTexture } from './strategy.js?v=23285c79844b';
+import { inferOpponentRanges } from './range-model.js?v=7710ac3987fa';
+import { preflopStrength, rankHand, simulateEquity } from './poker-math.js?v=7710ac3987fa';
+import { boardTexture } from './strategy.js?v=7710ac3987fa';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const deck=Array.from({length:52},(_,i)=>({r:2+i%13,s:Math.floor(i/13)}));
 const key=c=>c.s*13+c.r;
@@ -36,7 +36,9 @@ export function gtoStyle(seat=0) {
     {name:'Patient',valueFrequency:.74,size:.92,pace:1.12},
     {name:'Pressure',valueFrequency:.82,size:1.08,pace:.9},
     {name:'Tricky',valueFrequency:.76,size:1,pace:1.04},
-  ][Number.isInteger(seat)&&seat>=0&&seat<4?seat:0];
+    {name:'Steady',valueFrequency:.77,size:.96,pace:1.06},
+    {name:'Loose',valueFrequency:.8,size:1.04,pace:.94},
+  ][Number.isInteger(seat)&&seat>=0&&seat<6?seat:0];
 }
 // Timing uses public decision complexity only, never hand strength or bluff status.
 export function gtoThinkTime(obs,random=Math.random) {

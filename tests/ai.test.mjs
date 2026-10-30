@@ -36,7 +36,7 @@ test('all levels finish hands with legal moves and conserved chips', () => {
         const observation=botObservation(g),decision=chooseBotAction(observation,level,random);
         if(!observation.options.owed) assert.notEqual(decision.action,'fold');
         assert.ok(g.act(decision.action,decision.amount));
-        assert.equal(g.players.reduce((s,p)=>s+p.stack,0)+(g.done?0:g.pot),4000);
+        assert.equal(g.players.reduce((s,p)=>s+p.stack,0)+(g.done?0:g.pot),6000);
       }
       assert.ok(g.done);
     }

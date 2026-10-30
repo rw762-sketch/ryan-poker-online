@@ -24,7 +24,7 @@ export function sampleRangeGame(seed,onAction=()=>{},onAfterAction=()=>{}){
   onAction({game:g,event,styles});
   if(!g.act(action,amount))throw Error('Illegal training sample');memory.record(event);onAfterAction({game:g,event,styles});
  }
- if(!g.done||g.players.reduce((s,p)=>s+p.stack,0)!==4000)throw Error('Invalid training hand');
+ if(!g.done||g.players.reduce((s,p)=>s+p.stack,0)!==6000)throw Error('Invalid training hand');
  return {actions:moves,game:g};
 }
 if(process.argv[1]?.endsWith('train-ranges.mjs')){

@@ -1,15 +1,15 @@
-import { playerOutcome } from './player-outcome.js?v=23285c79844b';
-import { celebrateTable } from './celebration.js?v=23285c79844b';
-import { gtoThinkTime } from './gto.js?v=23285c79844b';
-import { DRINKS, TableGifts, validGift } from './table-gifts.js?v=23285c79844b';
-import { PlayerMemory } from './player-memory.js?v=23285c79844b';
-import { Poker, evaluate, labels } from './engine.js?v=23285c79844b';
-import { tableSnapshot, animateTable } from './motion.js?v=23285c79844b';
-import { LobbyClient, ServerRoom } from './server-room.js?v=23285c79844b';
-import { MULTIPLAYER_API_URL } from './network-config.js?v=23285c79844b';
-import { bindLobby } from './lobby.js?v=23285c79844b';
-import { OnlineRoom } from './multiplayer.js?v=23285c79844b';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=23285c79844b';
+import { playerOutcome } from './player-outcome.js?v=7710ac3987fa';
+import { celebrateTable } from './celebration.js?v=7710ac3987fa';
+import { gtoThinkTime } from './gto.js?v=7710ac3987fa';
+import { DRINKS, TableGifts, validGift } from './table-gifts.js?v=7710ac3987fa';
+import { PlayerMemory } from './player-memory.js?v=7710ac3987fa';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=7710ac3987fa';
+import { tableSnapshot, animateTable } from './motion.js?v=7710ac3987fa';
+import { LobbyClient, ServerRoom } from './server-room.js?v=7710ac3987fa';
+import { MULTIPLAYER_API_URL } from './network-config.js?v=7710ac3987fa';
+import { bindLobby } from './lobby.js?v=7710ac3987fa';
+import { OnlineRoom } from './multiplayer.js?v=7710ac3987fa';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=7710ac3987fa';
 let selectedDifficulty = 'medium';
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); } catch {}
 let handDifficulty = selectedDifficulty;
@@ -47,8 +47,9 @@ function card(c, hidden = false) {
 function view() {
   if (!room?.view) return game;
   const v = room.view;
-  const relative = seat => seat < 0 ? -1 : (seat - v.me + 4) % 4;
-  return { ...v, awards: (v.awards || []).map(a => ({ ...a, seat: relative(a.seat) })), turn: relative(v.turn), dealer: relative(v.dealer), players: Array.from({ length:4 }, (_, i) => v.players[(i + v.me) % 4]) };
+  const n = v.players.length;
+  const relative = seat => seat < 0 ? -1 : (seat - v.me + n) % n;
+  return { ...v, awards: (v.awards || []).map(a => ({ ...a, seat: relative(a.seat) })), turn: relative(v.turn), dealer: relative(v.dealer), players: Array.from({ length:n }, (_, i) => v.players[(i + v.me) % n]) };
 }
 function options() { return room ? room.view?.options || {} : game.options(); }
 function render() {
@@ -74,7 +75,7 @@ function renderTable(v) {
       ${i ? `<div class="avatar">${occupied ? escape(p.name[0]) : '+'}</div>` : ''}
       <div class="cards">${p.cards.map(c => card(c, room ? c === null : i !== 0 && !(v.done && v.stage === 4 && !p.folded))).join('')}</div>
       <div class="seat-identity"><div class="nameplate"><div class="player-name">${escape(name)}${v.dealer === i ? '<span class="badge" title="Dealer">D</span>' : ''}</div><div class="stack">${occupied ? p.stack.toLocaleString() : '—'}</div></div>
-      ${i && occupied && (!room || p.online) ? `<button type="button" class="seat-drink" data-gift-seat="${room ? (i + room.me) % 4 : i}" aria-label="Buy ${escape(p.name)} a drink" title="Buy ${escape(p.name)} a drink" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16l-8 9L4 4Zm8 9v7m-4 0h8M6 7h12"/></svg></button>` : ''}</div>
+      ${i && occupied && (!room || p.online) ? `<button type="button" class="seat-drink" data-gift-seat="${room ? (i + room.me) % v.players.length : i}" aria-label="Buy ${escape(p.name)} a drink" title="Buy ${escape(p.name)} a drink" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16l-8 9L4 4Zm8 9v7m-4 0h8M6 7h12"/></svg></button>` : ''}</div>
       <div class="player-action">${escape(action || ' ')}</div></div>`;
   }).join('');
   $('log').innerHTML = v.logs.map(line => `<li>${escape(line)}</li>`).join('');
@@ -91,7 +92,7 @@ function renderTable(v) {
     const count = v.players.filter(p => p.occupied && p.online).length;
     $('turnTitle').textContent = 'YOUR PRIVATE TABLE';
     $('status').textContent = room.host ? `${count} of 4 seats filled. Invite friends, then deal.` : 'You’re in. The host will deal when everyone is ready.';
-    $('handName').textContent = '2–4 players · 1,000 chips each · 45 seconds per turn';
+    $('handName').textContent = '2–6 players · 1,000 chips each · 45 seconds per turn';
     if (room.host) {
       button('Deal first hand', deal, 'primary').disabled = count < 2;
       const manage = (operation, seat) => { try { room.manageAI(operation, seat); } catch (error) { showRoomError(error.message); } };
@@ -99,7 +100,7 @@ function renderTable(v) {
         button('Add AI', () => manage('add'));
         button('Fill empty seats with AI', () => manage('fill'));
       }
-      v.players.forEach((p, i) => { if (p.bot) button(`Remove ${p.name}`, () => manage('remove', (i + room.me) % 4), 'remove-ai'); });
+      v.players.forEach((p, i) => { if (p.bot) button(`Remove ${p.name}`, () => manage('remove', (i + room.me) % v.players.length), 'remove-ai'); });
       $('handName').textContent = 'Add or remove AI before dealing · AI adapts to betting habits in this room';
     }
     return;
@@ -232,8 +233,8 @@ function receiveGift(gift) {
   if (!players[gift.from] || !players[gift.to]) return;
   const drink = DRINKS[gift.drink];
   $('giftNotice').textContent = `${players[gift.from].name} sent ${players[gift.to].name} ${drink.label.toLowerCase()}. Cheers!`;
-  const target = document.querySelector(`.seat-${(gift.to - me + 4) % 4}`);
-  const source = document.querySelector(`.seat-${(gift.from - me + 4) % 4}`);
+  const target = document.querySelector(`.seat-${(gift.to - me + SEATS) % SEATS}`);
+  const source = document.querySelector(`.seat-${(gift.from - me + SEATS) % SEATS}`);
   if (!target || !source) return;
   const a = source.getBoundingClientRect(), b = target.getBoundingClientRect();
   const token = document.createElement('span');

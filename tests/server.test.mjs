@@ -28,15 +28,15 @@ test('shared lobby lists players across tables without credentials or private st
   assert.throws(() => f.service.handle('/poll', randomUUID()), /session expired/);
 });
 
-test('four server players receive only their own cards; host authority and room limits hold', () => {
-  const f = fixture(), players = ['Host', 'B', 'C', 'D', 'E'].map(n => f.enter(n));
+test('six server players receive only their own cards; host authority and room limits hold', () => {
+  const f = fixture(), players = ['Host', 'B', 'C', 'D', 'E', 'F', 'G'].map(n => f.enter(n));
   const created = f.write('/create', players[0].token);
-  for (const p of players.slice(1, 4)) f.write('/join', p.token, { code: created.room });
-  assert.throws(() => f.write('/join', players[4].token, { code: created.room }), /full/);
+  for (const p of players.slice(1, 6)) f.write('/join', p.token, { code: created.room });
+  assert.throws(() => f.write('/join', players[6].token, { code: created.room }), /full/);
   let host = f.service.handle('/poll', players[0].token);
   assert.throws(() => f.write('/deal', players[1].token, { version: host.state.version }), /Only the host/);
   host = f.write('/deal', players[0].token, { version: host.state.version });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     const data = f.service.handle('/poll', players[i].token);
     assert.equal(data.state.me, i);
     data.state.players.forEach((p, j) => assert.equal(p.cards.filter(Boolean).length, i === j ? 2 : 0));
@@ -44,7 +44,7 @@ test('four server players receive only their own cards; host authority and room 
     assert.ok(!JSON.stringify(data).includes(players[i].token));
   }
   const turn = host.state.turn;
-  assert.throws(() => f.write('/action', players[(turn + 1) % 4].token, { action: 'fold', version: host.state.version }), /not your turn/);
+  assert.throws(() => f.write('/action', players[(turn + 1) % 6].token, { action: 'fold', version: host.state.version }), /not your turn/);
   const requestId = randomUUID();
   const result = f.write('/action', players[turn].token, { action: 'call', version: host.state.version, requestId });
   const duplicate = f.write('/action', players[turn].token, { action: 'call', version: host.state.version, requestId });

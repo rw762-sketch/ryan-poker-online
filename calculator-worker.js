@@ -1,5 +1,5 @@
-import { simulateEquity, seededRandom } from './poker-math.js?v=23285c79844b';
-import { analyzeDecision } from './strategy.js?v=23285c79844b';
+import { simulateEquity, seededRandom } from './poker-math.js?v=7710ac3987fa';
+import { analyzeDecision } from './strategy.js?v=7710ac3987fa';
 self.onmessage = ({ data }) => {
   try {
     // Random seed is generated once per requested calculation, not from live game state.

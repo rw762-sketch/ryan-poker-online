@@ -35,7 +35,7 @@ test('GTO plays complete hands with public history, inferred ranges, and conserv
  for(let seed=0;seed<30;seed++){
   const g=new Poker(),m=new PlayerMemory(),rng=seededRandom(9300+seed);g.start(rng);m.begin(g);let moves=0;
   while(!g.done&&moves++<200){const d=chooseBotDecision(botObservation(g,m),'gto',rng),e=m.capture(g,d.action,d.amount);inferred+=d.analysis.weightedRangeCombinations?.length||0;assert.ok(g.act(d.action,d.amount));m.record(e);}
-  assert.ok(g.done);assert.equal(g.players.reduce((s,p)=>s+p.stack,0),4000);
+  assert.ok(g.done);assert.equal(g.players.reduce((s,p)=>s+p.stack,0),6000);
  }
  assert.ok(inferred>0);
 });

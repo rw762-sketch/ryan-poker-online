@@ -16,7 +16,7 @@ for(const style of ['min-raise','half-pot','caller']){
    else {d=chooseBotDecision(obs,'hard',rng);if(obs.options.owed){faced++;if(!g.stage)preFaced++;if(d.action==='fold'){folded++;if(!g.stage)preFold++;const key=d.analysis.reason;reasons[key]=(reasons[key]||0)+1;}}}
    const e=m.capture(g,d.action,d.amount);if(!g.act(d.action,d.amount))throw Error('Invalid action');m.record(e);
   }
-  if(!g.done)throw Error('Unfinished hand');if(g.players.reduce((s,p)=>s+p.stack,0)!==4000)throw Error('Chip loss');
+  if(!g.done)throw Error('Unfinished hand');if(g.players.reduce((s,p)=>s+p.stack,0)!==6000)throw Error('Chip loss');
   m.finish();if(g.stage===4)showdowns++;
  }
  results.push({style,hands:300,facingBets:faced,folded,foldRate:+(folded/faced).toFixed(3),preflopFoldRate:+(preFold/preFaced).toFixed(3),showdowns,reasons});

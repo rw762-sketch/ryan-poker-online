@@ -41,7 +41,7 @@ test('GTO completes seeded full games with legal bets and conserved chips',()=>{
  for(let seed=1;seed<=30;seed++){
   const g=new Poker(),rng=seededRandom(seed);g.start(rng);let moves=0;
   while(!g.done&&moves++<200){const decision=chooseBotDecision(botObservation(g),'gto',rng);assert.ok(g.act(decision.action,decision.amount));}
-  assert.ok(g.done);assert.equal(g.players.reduce((s,p)=>s+p.stack,0),4000);
+  assert.ok(g.done);assert.equal(g.players.reduce((s,p)=>s+p.stack,0),6000);
  }
 });
 

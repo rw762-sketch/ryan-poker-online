@@ -57,7 +57,7 @@ test('adaptive bots complete many hands with legal actions and conserved chips',
  for(let h=0;h<100;h++){
   const g=new Poker();g.dealer=h%4-1;g.start(rng);m.begin(g);let moves=0;
   while(!g.done&&moves++<150){const a=chooseBotAction(botObservation(g,m),'hard',rng),e=m.capture(g,a.action,a.amount);assert.equal(g.act(a.action,a.amount),true);m.record(e);}
-  assert.ok(g.done);m.finish();assert.equal(g.players.reduce((s,p)=>s+p.stack,0),4000);
+  assert.ok(g.done);m.finish();assert.equal(g.players.reduce((s,p)=>s+p.stack,0),6000);
  }
  assert.equal(m.history.length,100);
 });

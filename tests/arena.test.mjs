@@ -9,7 +9,7 @@ test('arena steps real AI actions with matching explanation snapshots',()=>{
   if(a.game.done&&a.game.players.filter(p=>p.stack>0).length<2)a.newMatch();
   const before=a.game.pot,seat=a.game.turn,s=a.step();
   if(typeof s==='object'){decisions++;assert.equal(s.seat,seat);assert.equal(s.pot,before);assert.ok(s.analysis.reason);assert.ok(s.analysis.equity===null||s.analysis.equity>=0&&s.analysis.equity<=1);}
-  assert.equal(a.game.players.reduce((n,p)=>n+p.stack,0)+(a.game.done?0:a.game.pot),4000);
+  assert.equal(a.game.players.reduce((n,p)=>n+p.stack,0)+(a.game.done?0:a.game.pot),6000);
  }
  assert.ok(decisions>100);assert.ok(a.memory.history.length>0);assert.ok(a.decisions.length<=100);
  const memory=a.memory.history.length;a.newMatch();assert.equal(a.memory.history.length,memory);a.reset();assert.equal(a.memory.history.length,0);assert.equal(a.decisions.length,0);

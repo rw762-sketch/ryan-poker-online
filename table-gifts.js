@@ -15,8 +15,8 @@ export const DRINKS = Object.freeze({
   mocktail: {label:'Tropical Mocktail',icon:'🍹',note:'All the island vibes',group:'Zero-proof'},
 });
 export function validGift(gift) {
-  return gift && Number.isInteger(gift.from) && gift.from >= 0 && gift.from < 4 &&
-    Number.isInteger(gift.to) && gift.to >= 0 && gift.to < 4 && gift.from !== gift.to &&
+  return gift && Number.isInteger(gift.from) && gift.from >= 0 && gift.from < 6 &&
+    Number.isInteger(gift.to) && gift.to >= 0 && gift.to < 6 && gift.from !== gift.to &&
     typeof gift.drink === 'string' && Object.hasOwn(DRINKS, gift.drink);
 }
 // Cosmetics never mutate the poker state, action version, chips, or turn clock.

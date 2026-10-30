@@ -1,4 +1,4 @@
-import { OpponentModel, validContext } from './opponent-model.js?v=23285c79844b';
+import { OpponentModel, validContext } from './opponent-model.js?v=7710ac3987fa';
 // Public-action learning only: this module never reads cards or the deck.
 const LIMIT = 120;
 const blank = () => ({ hands:0, vpip:0, pfr:0, faced:0, folds:0, post:0, bets:0, calls:0, sizeTotal:0, sized:0 });
@@ -10,7 +10,7 @@ export class PlayerMemory {
     this.models = new Map();
     if (saved?.version === 1 && Array.isArray(saved.history)) {
       for (const hand of saved.history.slice(-LIMIT)) {
-        if (Array.isArray(hand.seats) && hand.seats.every(s=>Number.isInteger(s)&&s>=0&&s<4) && Array.isArray(hand.actions) && hand.actions.length<=200 && hand.actions.every(validAction)) {
+        if (Array.isArray(hand.seats) && hand.seats.every(s=>Number.isInteger(s)&&s>=0&&s<6) && Array.isArray(hand.actions) && hand.actions.length<=200 && hand.actions.every(validAction)) {
           this.history.push({seats:[...new Set(hand.seats)], actions:hand.actions.map(a=>({...a}))});
         }
       }
@@ -76,7 +76,7 @@ export class PlayerMemory {
   save() { return {version:1,history:this.history}; }
 }
 function validAction(a) {
-  return a && Number.isInteger(a.seat)&&a.seat>=0&&a.seat<4&&Number.isInteger(a.street)&&a.street>=0&&a.street<=3&&
+  return a && Number.isInteger(a.seat)&&a.seat>=0&&a.seat<6&&Number.isInteger(a.street)&&a.street>=0&&a.street<=3&&
     ['fold','call','check','raise'].includes(a.type)&&typeof a.faced==='boolean'&&Number.isFinite(a.size)&&a.size>=0&&a.size<=100000&&Number.isFinite(a.chips)&&a.chips>=0&&a.chips<=10000000&&(a.context===undefined||validContext(a.context));
 }
 export function adaptStrategy(obs, base, strength=1) {

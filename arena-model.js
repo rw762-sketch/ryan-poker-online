@@ -1,11 +1,11 @@
-import {Poker} from './engine.js?v=23285c79844b';
-import {PlayerMemory} from './player-memory.js?v=23285c79844b';
-import {botObservation,chooseBotDecision} from './ai.js?v=23285c79844b';
-export const BOT_NAMES=['Sage','Jules','Morgan','Alex'];
+import {Poker} from './engine.js?v=7710ac3987fa';
+import {PlayerMemory} from './player-memory.js?v=7710ac3987fa';
+import {botObservation,chooseBotDecision} from './ai.js?v=7710ac3987fa';
+export const BOT_NAMES=['Sage','Jules','Morgan','Alex','Riley','Sam'];
 export class Arena {
  constructor(random=Math.random){this.random=random;this.reset();}
  reset(){this.memory=new PlayerMemory();this.decisions=[];this.match=0;this.newMatch();}
- newMatch(){this.game=new Poker();this.game.players.forEach((p,i)=>p.name=BOT_NAMES[i]);this.match++;this.history=[{hand:0,stacks:[1000,1000,1000,1000]}];this.nextHand();}
+ newMatch(){this.game=new Poker();this.game.players.forEach((p,i)=>p.name=BOT_NAMES[i]);this.match++;this.history=[{hand:0,stacks:BOT_NAMES.map(()=>1000)}];this.nextHand();}
  nextHand(){if(!this.game.done)return false;if(!this.game.start(this.random))return false;this.memory.begin(this.game);if(this.game.done)this.complete();return true;}
  complete(){this.memory.finish();this.history.push({hand:this.game.hand,stacks:this.game.players.map(p=>p.stack)});}
  step(){

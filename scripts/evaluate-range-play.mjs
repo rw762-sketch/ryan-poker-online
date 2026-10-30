@@ -35,7 +35,7 @@ if(mode==='paired'){
    const d=seat===hero?(previous?base.chooseBotDecision:chooseBotDecision)(obs,'gto',rngs[seat]):opponent(obs,style,rngs[seat]);
    if(seat===hero){self.push({type:d.action,street:g.stage});if(!previous){counts.actions++;if(d.action==='fold')counts.folds++;if(d.action==='raise'){counts.raises++;if(d.analysis.bluffKind)counts.bluffs++;}}}
    if(!obs.options.owed&&d.action==='fold')throw Error('Free-check fold');
-   const event=memory.capture(g,d.action,d.amount);if(!g.act(d.action,d.amount))throw Error(`Illegal action ${JSON.stringify({h,style,previous,d})}`);memory.record(event);verify(g,4000);
+   const event=memory.capture(g,d.action,d.amount);if(!g.act(d.action,d.amount))throw Error(`Illegal action ${JSON.stringify({h,style,previous,d})}`);memory.record(event);verify(g,6000);
   }
   if(!g.done)throw Error('Hand did not finish');return (g.players[hero].stack-1000)/20;
  }

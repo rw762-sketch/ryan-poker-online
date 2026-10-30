@@ -1,6 +1,6 @@
 # Ryan’s Online Poker
 
-A Texas Hold’em browser game with solo play against three computer opponents and online rooms for 2–4 friends. Includes rotating blinds, betting rounds, all-ins, side pots, ties, and best-five-of-seven hand evaluation. Play chips only. Solo state lasts for the current page session; server rooms can be resumed in the same tab.
+A Texas Hold’em browser game with solo play against five computer opponents and online rooms for 2–4 friends. Includes rotating blinds, betting rounds, all-ins, side pots, ties, and best-five-of-seven hand evaluation. Play chips only. Solo state lasts for the current page session; server rooms can be resumed in the same tab.
 
 Run locally with `python3 -m http.server 4173`, then open http://localhost:4173.
 
@@ -50,7 +50,7 @@ Validation: `node --test tests/server.test.mjs tests/network.test.mjs tests/mult
 
 ## Direct online multiplayer (legacy option)
 
-Use **Play with friends** to create or join an 8-character room. Share the invite link, wait for 2–4 players, and let the host deal. Solo play remains available.
+Use **Play with friends** to create or join an 8-character room. Share the invite link, wait for 2–6 players, and let the host deal. Solo play remains available.
 
 The host browser runs the authoritative poker engine. Guests send actions; the host validates turns, bet sizes, and state versions, then sends each guest a filtered view containing only their own hole cards until showdown. This is casual play among trusted friends: a technically capable host can inspect the full deck and hole cards in their own browser. There is no independent game server or anti-cheat guarantee.
 

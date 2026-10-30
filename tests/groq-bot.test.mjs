@@ -71,7 +71,7 @@ test('timeouts use math, stale responses cannot play, and chips are conserved', 
   assert.equal(await completeBotJob(s.db, job, { action: 'allin' }, s.now), false);
   const service = decode((await s.db.prepare('SELECT payload FROM poker_state WHERE id=1').first()).payload, s.now);
   const g = service.rooms.get(s.room).table.game;
-  assert.equal(g.players.reduce((n, p) => n + p.stack, 0) + g.pot, 4000);
+  assert.equal(g.players.reduce((n, p) => n + p.stack, 0) + g.pot, 6000);
 });
 
 test('daily budget skips API and invalid decisions fall back to legal math actions', async t => {

@@ -1,11 +1,12 @@
-import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=23285c79844b';
+import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=7710ac3987fa';
 
 export const DEFAULT_POLICY = { openEarly:.64, openLate:.42, defend:.035, value:.61, aggression:.72, bluff:.055, size:.65 };
 export function positionOf(game, seat) {
   const active = game.players.map((p, i) => !p.folded ? i : -1).filter(i => i >= 0);
   if (seat === game.dealer) return 'late';
   const order = [];
-  for (let n = 1; n <= 4; n++) { const i = (game.dealer + n) % 4; if (active.includes(i)) order.push(i); }
+  const seats = game.players.length;
+  for (let n = 1; n <= seats; n++) { const i = (game.dealer + n) % seats; if (active.includes(i)) order.push(i); }
   return order[0] === seat ? 'early' : order.at(-1) === seat ? 'late' : 'middle';
 }
 export function boardTexture(cards, board) {

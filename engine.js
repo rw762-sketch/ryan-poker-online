@@ -1,12 +1,14 @@
-import { describeHand, compareHandsText } from './hand-description.js?v=23285c79844b';
+import { describeHand, compareHandsText } from './hand-description.js?v=7710ac3987fa';
+export const SEATS=6;
+export const SEAT_NAMES=['You','Jules','Morgan','Alex','Riley','Sam'];
 export const labels=['High card','One pair','Two pair','Three of a kind','Straight','Flush','Full house','Four of a kind','Straight flush'];
 export function compare(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){let d=(a[i]||0)-(b[i]||0);if(d)return d;}return 0;}
 function five(cards){const ranks=cards.map(c=>c.r).sort((a,b)=>b-a),counts={};ranks.forEach(r=>counts[r]=(counts[r]||0)+1);const g=Object.entries(counts).map(([r,n])=>({r:+r,n})).sort((a,b)=>b.n-a.n||b.r-a.r);const flush=cards.every(c=>c.s===cards[0].s);let straight=0;if(g.length===5){if(ranks[0]-ranks[4]===4)straight=ranks[0];else if(ranks.join()==='14,5,4,3,2')straight=5;}if(flush&&straight)return[8,straight];if(g[0].n===4)return[7,g[0].r,g[1].r];if(g[0].n===3&&g[1].n===2)return[6,g[0].r,g[1].r];if(flush)return[5,...ranks];if(straight)return[4,straight];if(g[0].n===3)return[3,...g.map(x=>x.r)];if(g[0].n===2&&g[1].n===2)return[2,...g.map(x=>x.r)];if(g[0].n===2)return[1,...g.map(x=>x.r)];return[0,...ranks];}
 export function evaluate(cards){let best=[-1];for(let a=0;a<cards.length-4;a++)for(let b=a+1;b<cards.length-3;b++)for(let c=b+1;c<cards.length-2;c++)for(let d=c+1;d<cards.length-1;d++)for(let e=d+1;e<cards.length;e++){let v=five([cards[a],cards[b],cards[c],cards[d],cards[e]]);if(compare(v,best)>0)best=v;}return best;}
 export class Poker{
-constructor(){this.players=['You','Jules','Morgan','Alex'].map(name=>({name,stack:1000,cards:[],folded:false,bet:0,total:0,action:''}));this.dealer=-1;this.hand=0;this.logs=[];this.done=true;this.board=[];this.pot=0;this.awards=[];this.pots=[];}
+constructor(){this.players=SEAT_NAMES.map(name=>({name,stack:1000,cards:[],folded:false,bet:0,total:0,action:''}));this.dealer=-1;this.hand=0;this.logs=[];this.done=true;this.board=[];this.pot=0;this.awards=[];this.pots=[];}
 log(s){this.logs.unshift(s);this.logs=this.logs.slice(0,70);}
-next(i,fn=p=>p.stack>0){for(let j=1;j<=4;j++){let k=(i+j)%4;if(fn(this.players[k]))return k;}return -1;}
+next(i,fn=p=>p.stack>0){const n=this.players.length;for(let j=1;j<=n;j++){let k=(i+j)%n;if(fn(this.players[k]))return k;}return -1;}
 pay(i,n){let p=this.players[i],amount=Math.min(n,p.stack);p.stack-=amount;p.bet+=amount;p.total+=amount;this.pot+=amount;if(amount>0&&!p.stack)p.allIn=true;return amount;}
 start(shuffleRandom){if(this.players.filter(p=>p.stack>0).length<2)return false;this.hand++;this.awards=[];this.pots=[];this.result='';this.done=false;this.board=[];this.pot=0;this.stage=0;this.current=20;this.minRaise=20;this.acted=new Set();this.raiseAt={};this.deck=[];for(let s=0;s<4;s++)for(let r=2;r<=14;r++)this.deck.push({r,s});for(let i=51;i>0;i--){let j;if(shuffleRandom){j=Math.floor(shuffleRandom()*(i+1));}else{const a=new Uint32Array(1);globalThis.crypto.getRandomValues(a);j=a[0]%(i+1);}[this.deck[i],this.deck[j]]=[this.deck[j],this.deck[i]];}this.players.forEach(p=>{p.allIn=false;p.folded=p.stack===0;p.bet=p.total=0;p.action=p.folded?'Out of chips':'';p.cards=p.folded?[]:[this.deck.pop(),this.deck.pop()];});this.dealer=this.next(this.dealer);let heads=this.players.filter(p=>!p.folded).length===2;let sb=heads?this.dealer:this.next(this.dealer),bb=this.next(sb);this.pay(sb,10);this.pay(bb,20);this.players[sb].action='Small blind';this.players[bb].action='Big blind';this.turn=this.next(bb,p=>!p.folded&&p.stack>0);this.log(`Hand ${this.hand} · ${this.players[this.dealer].name} deals.`);this.advance(false);return true;}
 options(){let p=this.players[this.turn];if(!p||this.done)return{};let call=Math.max(0,this.current-p.bet),max=p.bet+p.stack;return{call:Math.min(call,p.stack),owed:call,min:Math.min(max,this.current+this.minRaise),max,canRaise:max>this.current&&(this.raiseAt[this.turn]===undefined||this.current-this.raiseAt[this.turn]>=this.minRaise)&&this.players.some((q,i)=>i!==this.turn&&!q.folded&&q.stack>0)};}
@@ -27,7 +29,7 @@ showdown() {
     const scores = eligible.map(p => ({ p, v: evaluate([...p.cards, ...this.board]) }))
       .sort((a,b) => compare(b.v, a.v));
     const winners = scores.filter(x => compare(x.v, scores[0].v) === 0).map(x => x.p);
-    winners.sort((a,b) => ((this.players.indexOf(a)-this.dealer+3)%4)-((this.players.indexOf(b)-this.dealer+3)%4));
+    winners.sort((a,b) => ((this.players.indexOf(a)-this.dealer-1+this.players.length)%this.players.length)-((this.players.indexOf(b)-this.dealer-1+this.players.length)%this.players.length));
     this.pots.push({ amount, eligible:eligible.map(p => this.players.indexOf(p)), winners:winners.map(p => this.players.indexOf(p)), refund:contributors.length === 1 });
     winners.forEach((p,i) => {
       const share = Math.floor(amount/winners.length) + (i < amount%winners.length ? 1 : 0);

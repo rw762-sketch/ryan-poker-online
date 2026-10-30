@@ -1,7 +1,7 @@
-import {Arena,BOT_NAMES} from './arena-model.js?v=23285c79844b';
-import {tableSnapshot,animateTable} from './motion.js?v=23285c79844b';
+import {Arena,BOT_NAMES} from './arena-model.js?v=7710ac3987fa';
+import {tableSnapshot,animateTable} from './motion.js?v=7710ac3987fa';
 const $=id=>document.getElementById(id), arena=new Arena();
-const colors=['#76d3b0','#e4be7a','#85b5ef','#cd9ee9'];
+const colors=['#76d3b0','#f2c46b','#85b5ef','#cd9ee9','#f08c6c','#9ad06a'];
 const streets=['Pre-flop','Flop','Turn','River','Showdown'];
 let running=false,timer=null,selected=null,frame=null;
 function card(c,hidden=false){
