@@ -1,4 +1,4 @@
-import { MULTIPLAYER_API_URL } from './network-config.js?v=6c205a666ec4';
+import { MULTIPLAYER_API_URL } from './network-config.js?v=1c7d05e7291b';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 export class LobbyClient {

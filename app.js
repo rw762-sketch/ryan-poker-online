@@ -1,18 +1,18 @@
-import { playerOutcome } from './player-outcome.js?v=6c205a666ec4';
-import { celebrateTable } from './celebration.js?v=6c205a666ec4';
-import { gtoThinkTime } from './gto.js?v=6c205a666ec4';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=6c205a666ec4';
-import { PlayerMemory } from './player-memory.js?v=6c205a666ec4';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=6c205a666ec4';
-import { tableSnapshot, animateTable } from './motion.js?v=6c205a666ec4';
-import { LobbyClient, ServerRoom } from './server-room.js?v=6c205a666ec4';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=6c205a666ec4';
-import { bindLobby } from './lobby.js?v=6c205a666ec4';
-import { OnlineRoom } from './multiplayer.js?v=6c205a666ec4';
-import { readObservation } from './strategy.js?v=6c205a666ec4';
-import { randomStyle, driftStyle } from './neural-policy.js?v=6c205a666ec4';
-import { replyTo, reactTo } from './table-talk.js?v=6c205a666ec4';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=6c205a666ec4';
+import { playerOutcome } from './player-outcome.js?v=1c7d05e7291b';
+import { celebrateTable } from './celebration.js?v=1c7d05e7291b';
+import { gtoThinkTime } from './gto.js?v=1c7d05e7291b';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=1c7d05e7291b';
+import { PlayerMemory } from './player-memory.js?v=1c7d05e7291b';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=1c7d05e7291b';
+import { tableSnapshot, animateTable } from './motion.js?v=1c7d05e7291b';
+import { LobbyClient, ServerRoom } from './server-room.js?v=1c7d05e7291b';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=1c7d05e7291b';
+import { bindLobby } from './lobby.js?v=1c7d05e7291b';
+import { OnlineRoom } from './multiplayer.js?v=1c7d05e7291b';
+import { readObservation } from './strategy.js?v=1c7d05e7291b';
+import { randomStyle, driftStyle } from './neural-policy.js?v=1c7d05e7291b';
+import { replyTo, reactTo } from './table-talk.js?v=1c7d05e7291b';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=1c7d05e7291b';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -110,7 +110,7 @@ function renderTable(v) {
     const name = room && i === 0 ? `${p.name} (you)` : p.name;
     const action = !occupied ? 'Invite a friend' : room && !p.online ? 'Disconnected' : p.action;
     return `<div class="seat seat-${i} ${p.sittingOut ? 'seat-off' : ''} ${!v.done && v.turn === i ? 'active' : ''} ${p.folded && v.hand ? 'folded' : ''} ${!occupied ? 'empty-seat' : ''}">
-      ${i ? `<div class="avatar">${occupied ? escape(p.name[0]) : '+'}</div>` : ''}
+      ${i ? `<div class="avatar" style="--hue:${[0, 330, 190, 268, 150, 28][i]}">${occupied ? `<span class="face" aria-hidden="true"><i></i><i></i><u></u></span><b>${escape(p.name[0])}</b>` : '+'}</div>` : ''}
       <div class="cards">${p.cards.map(c => card(c, room ? c === null : i !== 0 && !(v.done && v.stage === 4 && !p.folded))).join('')}</div>
       <div class="seat-identity"><div class="nameplate"><div class="player-name">${escape(name)}${v.dealer === i ? '<span class="badge" title="Dealer">D</span>' : ''}</div><div class="stack">${occupied ? p.stack.toLocaleString() : '—'}</div></div>
       ${i && occupied && (!room || p.online) ? `<button type="button" class="seat-drink" data-gift-seat="${room ? (i + room.me) % v.players.length : i}" aria-label="Buy ${escape(p.name)} a drink" title="Buy ${escape(p.name)} a drink" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16l-8 9L4 4Zm8 9v7m-4 0h8M6 7h12"/></svg></button>` : ''}</div>
