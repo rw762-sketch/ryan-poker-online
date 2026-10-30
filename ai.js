@@ -1,15 +1,18 @@
-import { gtoDecision } from './gto.js?v=7710ac3987fa';
-import { learnBluffPolicy } from './opponent-model.js?v=7710ac3987fa';
-import { adaptStrategy } from './player-memory.js?v=7710ac3987fa';
-import { evaluate } from './engine.js?v=7710ac3987fa';
-import { simulateEquity } from './poker-math.js?v=7710ac3987fa';
-import { readObservation, strategicAction, DEFAULT_POLICY, boardTexture } from './strategy.js?v=7710ac3987fa';
-import { TRAINED_POLICY } from './trained-policy.js?v=7710ac3987fa';
+import { gtoDecision } from './gto.js?v=2faa4b345575';
+import { learnBluffPolicy } from './opponent-model.js?v=2faa4b345575';
+import { adaptStrategy } from './player-memory.js?v=2faa4b345575';
+import { evaluate } from './engine.js?v=2faa4b345575';
+import { simulateEquity } from './poker-math.js?v=2faa4b345575';
+import { readObservation, strategicAction, DEFAULT_POLICY, boardTexture } from './strategy.js?v=2faa4b345575';
+import { TRAINED_POLICY } from './trained-policy.js?v=2faa4b345575';
+import { chooseNeuralDecision, SEAT_PERSONAS } from './neural-policy.js?v=2faa4b345575';
 export const DIFFICULTIES = {
   gto: { name:'GTO', description:'Expert play · GTO-inspired.' },
   easy: { name:'Easy', description:'A relaxed table.' },
   medium: { name:'Medium', description:'A steady challenge.' },
   hard: { name:'Hard', description:'A tougher table.' },
+  neural: { name:'Neural', description:'Trained neural net · five personalities.' },
+  live: { name:'Live AI', description:'LLM players who talk at the table.' },
 };
 export const normalizeDifficulty = value => Object.hasOwn(DIFFICULTIES, value) ? value : 'medium';
 export function botObservation(game, memory) {
@@ -35,6 +38,8 @@ export function estimateEquity(observation, trials, random = Math.random) {
 export function chooseBotDecision(obs, difficulty = 'medium', random = Math.random) {
   const level = normalizeDifficulty(difficulty);
   if(level==='gto')return gtoDecision(obs,random);
+  // Live AI falls back to the neural bots whenever the server is unavailable.
+  if(level==='neural'||level==='live')return chooseNeuralDecision(obs,{persona:SEAT_PERSONAS[obs.seat]||'shark',random});
   if (level !== 'easy') {
     const base={...(level==='hard'?TRAINED_POLICY:DEFAULT_POLICY)};
     // Distinct tendencies remain small; every bot responds to the same public evidence.

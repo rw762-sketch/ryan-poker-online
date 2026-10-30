@@ -1,15 +1,16 @@
-import { playerOutcome } from './player-outcome.js?v=7710ac3987fa';
-import { celebrateTable } from './celebration.js?v=7710ac3987fa';
-import { gtoThinkTime } from './gto.js?v=7710ac3987fa';
-import { DRINKS, TableGifts, validGift } from './table-gifts.js?v=7710ac3987fa';
-import { PlayerMemory } from './player-memory.js?v=7710ac3987fa';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=7710ac3987fa';
-import { tableSnapshot, animateTable } from './motion.js?v=7710ac3987fa';
-import { LobbyClient, ServerRoom } from './server-room.js?v=7710ac3987fa';
-import { MULTIPLAYER_API_URL } from './network-config.js?v=7710ac3987fa';
-import { bindLobby } from './lobby.js?v=7710ac3987fa';
-import { OnlineRoom } from './multiplayer.js?v=7710ac3987fa';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=7710ac3987fa';
+import { playerOutcome } from './player-outcome.js?v=2faa4b345575';
+import { celebrateTable } from './celebration.js?v=2faa4b345575';
+import { gtoThinkTime } from './gto.js?v=2faa4b345575';
+import { DRINKS, TableGifts, validGift } from './table-gifts.js?v=2faa4b345575';
+import { PlayerMemory } from './player-memory.js?v=2faa4b345575';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=2faa4b345575';
+import { tableSnapshot, animateTable } from './motion.js?v=2faa4b345575';
+import { LobbyClient, ServerRoom } from './server-room.js?v=2faa4b345575';
+import { MULTIPLAYER_API_URL } from './network-config.js?v=2faa4b345575';
+import { bindLobby } from './lobby.js?v=2faa4b345575';
+import { OnlineRoom } from './multiplayer.js?v=2faa4b345575';
+import { readObservation } from './strategy.js?v=2faa4b345575';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=2faa4b345575';
 let selectedDifficulty = 'medium';
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); } catch {}
 let handDifficulty = selectedDifficulty;
@@ -38,11 +39,20 @@ let pendingTimer = null;
 let connectionMessage = '';
 let soloGifts = new TableGifts();
 
+// Every card lands a little differently, but stays put while the hand re-renders.
+let tiltSalt = 1;
+let tiltCount = 0;
+function tilt(key) {
+  let h = Math.imul(key ^ tiltSalt, 2654435761) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+  return ((h % 1000) / 1000 - .5) * 5;
+}
 function card(c, hidden = false) {
-  if (hidden) return '<div class="card back" aria-label="Face-down card"></div>';
+  const t = tilt(c ? c.r * 4 + c.s + 7 : 900 + (tiltCount++ % 12));
+  if (hidden) return `<div class="card back" style="--tilt:${t.toFixed(2)}deg" aria-label="Face-down card"></div>`;
   if (!c) return '<div class="card empty"></div>';
   const rank = ({ 11:'J', 12:'Q', 13:'K', 14:'A' })[c.r] || c.r;
-  return `<div class="card ${c.s % 2 ? 'red' : ''}" aria-label="${rank} ${['spades','hearts','clubs','diamonds'][c.s]}"><span>${rank}</span><span class="suit">${suits[c.s]}</span></div>`;
+  return `<div class="card ${c.s % 2 ? 'red' : ''}" style="--tilt:${t.toFixed(2)}deg" aria-label="${rank} ${['spades','hearts','clubs','diamonds'][c.s]}"><span>${rank}</span><span class="suit">${suits[c.s]}</span></div>`;
 }
 function view() {
   if (!room?.view) return game;
@@ -63,6 +73,7 @@ function render() {
   renderRoom();
 }
 function renderTable(v) {
+  tiltSalt = (v.hand * 7919 + 13) | 0; tiltCount = 0;
   $('pot').textContent = v.pot.toLocaleString();
   $('handNo').textContent = `HAND ${String(v.hand).padStart(2, '0')}`;
   $('board').innerHTML = Array.from({ length:5 }, (_, i) => card(v.board[i])).join('');
@@ -180,14 +191,51 @@ function deal() {
   if (!room) { start(); return; }
   try { connectionMessage = ''; room.deal(); } catch (error) { showRoomError(error.message); }
 }
+function thinkTime() {
+  if (handDifficulty === 'gto') return gtoThinkTime({seat:game.turn,options:game.options(),pot:game.pot});
+  // Bigger pots and facing bets take a little longer, like a person would.
+  const facing = game.options().owed > 0 ? 350 : 0;
+  return 650 + Math.random() * 700 + facing + Math.min(700, game.pot / 3);
+}
+async function liveMove(seat, hand) {
+  const o = readObservation(game);
+  const observation = { cards:o.cards, board:o.board, pot:o.pot, stack:o.stack, bet:o.bet, current:o.current,
+    opponents:o.opponents, position:o.position, opponentRanges:o.opponentRanges, options:o.options };
+  try {
+    const response = await fetch(`${MULTIPLAYER_API_URL}/table-talk`, { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({ name:game.players[seat].name, observation }), signal:AbortSignal.timeout(7500) });
+    if (!response.ok) return null;
+    const move = await response.json();
+    if (game.hand !== hand || game.turn !== seat || game.done) return 'stale';
+    const options = game.options();
+    if (!['fold','call','raise','allin'].includes(move.action)) return null;
+    if (move.action === 'raise' && !(Number.isInteger(move.amount) && options.canRaise && move.amount >= options.min && move.amount <= options.max)) return null;
+    return move;
+  } catch { return null; }
+}
+function showTalk(seat, text) {
+  if (!text) return;
+  const target = document.querySelector(`.seat-${seat} .seat-identity`);
+  if (!target) return;
+  const bubble = document.createElement('div');
+  bubble.className = 'talk-bubble'; bubble.textContent = text; bubble.setAttribute('role', 'status');
+  target.append(bubble);
+  setTimeout(() => bubble.remove(), 3800);
+}
 function schedule() {
   clearTimeout(timer);
   if (friendsPage || room || game.done || game.turn === 0) return;
-  timer = setTimeout(() => {
+  const seat = game.turn, hand = game.hand;
+  timer = setTimeout(async () => {
     if (room) return;
+    if (handDifficulty === 'live') {
+      const move = await liveMove(seat, hand);
+      if (move === 'stale' || room || game.done || game.hand !== hand || game.turn !== seat) return;
+      if (move) { act(move.action === 'allin' ? 'allin' : move.action, move.amount); showTalk(seat, move.say); return; }
+    }
     const decision = chooseBotAction(botObservation(game, playerMemory), handDifficulty);
     act(decision.action, decision.amount);
-  }, handDifficulty === 'gto' ? gtoThinkTime({seat:game.turn,options:game.options(),pot:game.pot}) : 850 + Math.random() * 650);
+  }, handDifficulty === 'live' ? 250 : thinkTime());
 }
 function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
 function renderDifficulty() {
@@ -243,9 +291,37 @@ function receiveGift(gift) {
   Object.assign(token.style, { left:`${b.left+b.width/2}px`, top:`${b.top}px` });
   document.body.append(token);
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches && token.animate) {
-    token.animate([{ transform:`translate(${a.left+a.width/2-b.left-b.width/2}px,${a.top-b.top}px) scale(.5)`, opacity:0 }, { transform:'translate(0, -12px) scale(1.15)', opacity:1, offset:.7 }, { transform:'translate(0, 0) scale(1)', opacity:1 }], { duration:850, easing:'ease-out' });
+    // Slide the glass along a curved arc across the felt, with a little spin,
+    // then set it down with a clink of sparkles and a glow on the recipient.
+    const dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top - b.top;
+    const lift = -Math.max(90, Math.abs(dx) * .35) - Math.random() * 40;
+    const spin = (Math.random() < .5 ? -1 : 1) * (200 + Math.random() * 160);
+    const frames = Array.from({ length: 13 }, (_, i) => {
+      const t = i / 12, u = 1 - t;
+      const x = u * u * dx + 2 * u * t * (dx * .5) + 0;
+      const y = u * u * dy + 2 * u * t * (dy * .5 + lift);
+      const scale = .45 + .75 * Math.sin(Math.PI * Math.min(1, t * 1.1)) * (t < .9 ? 1 : .8) + (t > .9 ? .55 : 0);
+      return { transform:`translate(${x}px, ${y}px) rotate(${spin * u}deg) scale(${Math.max(.45, Math.min(1.2, scale))})`, opacity: t === 0 ? 0 : 1 };
+    });
+    frames.push({ transform:'translate(0, 4px) rotate(0deg) scale(1.08)', opacity:1 }, { transform:'translate(0, 0) rotate(-4deg) scale(1)', opacity:1 });
+    const flight = token.animate(frames, { duration:1150, easing:'cubic-bezier(.25,.7,.3,1)' });
+    flight.onfinish = () => {
+      for (let i = 0; i < 9; i++) {
+        const spark = document.createElement('i');
+        spark.className = 'drink-spark';
+        const angle = (i / 9) * Math.PI * 2 + Math.random() * .4;
+        spark.style.left = token.style.left; spark.style.top = token.style.top;
+        document.body.append(spark);
+        spark.animate([{ transform:'translate(-50%,-50%) scale(1)', opacity:1 },
+          { transform:`translate(calc(-50% + ${Math.cos(angle) * (34 + Math.random() * 22)}px), calc(-50% + ${Math.sin(angle) * (28 + Math.random() * 18) + 10}px)) scale(.2)`, opacity:0 }],
+          { duration:650 + Math.random() * 200, easing:'cubic-bezier(.2,.8,.3,1)' }).onfinish = () => spark.remove();
+      }
+      target.querySelector('.nameplate')?.animate([{ boxShadow:'0 0 0 0 #f2c46b00' }, { boxShadow:'0 0 0 6px #f2c46b55, 0 0 34px #f2c46b66' }, { boxShadow:'0 0 0 0 #f2c46b00' }], { duration:1100, easing:'ease-out' });
+      token.animate([{ transform:'translate(0,0) rotate(-4deg)' }, { transform:'translate(0,-5px) rotate(3deg)' }, { transform:'translate(0,0) rotate(-2deg)' }], { duration:900, iterations:2, easing:'ease-in-out' });
+    };
+    setTimeout(() => token.animate([{ opacity:1, transform:'translateY(0) scale(1)' }, { opacity:0, transform:'translateY(-26px) scale(.8)' }], { duration:450, easing:'ease-in', fill:'forwards' }), 2900);
   }
-  setTimeout(() => token.remove(), 2600);
+  setTimeout(() => token.remove(), 3400);
 }
 let drinkRecipient = null;
 let drinkRoom = null;

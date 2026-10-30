@@ -1,0 +1,139 @@
+// Neural action-value bot. A small network, trained offline on simulated hands
+// (scripts/neural-data.mjs + scripts/neural-train.py), estimates how many big
+// blinds each move is worth from public information and the bot's own cards.
+// Personalities change how the bot chooses among those estimates, not what it sees.
+import { preflopStrength, simulateEquity } from './poker-math.js?v=2faa4b345575';
+import { boardTexture, strategicAction, DEFAULT_POLICY } from './strategy.js?v=2faa4b345575';
+import { TRAINED_POLICY } from './trained-policy.js?v=2faa4b345575';
+import { NEURAL_WEIGHTS } from './neural-weights.js?v=2faa4b345575';
+
+export const NEURAL_ACTIONS = ['fold', 'call', 'half', 'pot', 'allin'];
+const BB = 20;
+
+export function actionAmount(obs, index) {
+  const o = obs.options;
+  if (index === 4) return o.max;
+  const fraction = index === 2 ? 0.5 : 1;
+  const raw = obs.current + Math.round(Math.max(obs.bigBlind || BB, (obs.pot + o.call) * fraction) / 10) * 10;
+  return Math.min(o.max, Math.max(o.min, raw));
+}
+
+export function legalMask(obs) {
+  const o = obs.options;
+  return [o.owed > 0, true, !!o.canRaise, !!o.canRaise, !!o.canRaise];
+}
+
+export function toDecision(obs, index) {
+  if (index === 0) return { action: 'fold' };
+  if (index === 1) return { action: 'call' };
+  return { action: 'raise', amount: actionAmount(obs, index) };
+}
+
+const clip = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+export function neuralFeatures(obs, equity) {
+  const o = obs.options, stage = obs.board.length === 0 ? 0 : obs.board.length - 2;
+  const texture = boardTexture(obs.cards, obs.board);
+  const pot = Math.max(1, obs.pot);
+  const ranges = obs.opponentRanges || [];
+  const share = name => ranges.length ? ranges.filter(r => r === name).length / ranges.length : 0;
+  const spr = (obs.effectiveStack ?? obs.stack) / pot;
+  const pair = obs.cards[0].r === obs.cards[1].r ? 1 : 0;
+  const suited = obs.cards[0].s === obs.cards[1].s ? 1 : 0;
+  return [
+    stage === 0 ? 1 : 0, stage === 1 ? 1 : 0, stage === 2 ? 1 : 0, stage === 3 ? 1 : 0,
+    equity,
+    equity * (obs.opponents || 1) / 5,
+    preflopStrength(obs.cards),
+    pair, suited,
+    obs.board.length ? texture.category / 8 : 0,
+    texture.wet ? 1 : 0, texture.draw ? 1 : 0,
+    o.call / (pot + o.call),
+    clip(o.call / Math.max(1, obs.stack), 0, 1),
+    clip(Math.log1p(spr) / 3, 0, 2),
+    (obs.opponents || 1) / 5,
+    obs.position === 'early' ? 1 : 0, obs.position === 'middle' ? 1 : 0, obs.position === 'late' ? 1 : 0,
+    obs.unopened ? 1 : 0, obs.limped ? 1 : 0,
+    clip(obs.current / pot, 0, 3),
+    o.canRaise ? 1 : 0,
+    clip(obs.stack / 1000, 0, 4),
+    clip(pot / 1000, 0, 4),
+    share('tight'), share('loose'), share('random'),
+  ];
+}
+
+export function forward(weights, x) {
+  let h = x;
+  for (let l = 0; l < weights.layers.length; l++) {
+    const { W, b } = weights.layers[l];
+    const out = new Array(b.length);
+    for (let j = 0; j < b.length; j++) {
+      let s = b[j];
+      const row = W[j];
+      for (let i = 0; i < h.length; i++) s += row[i] * h[i];
+      out[j] = l < weights.layers.length - 1 ? (s > 0 ? s : 0.01 * s) : s;
+    }
+    h = out;
+  }
+  return h;
+}
+
+export function normalize(weights, features) {
+  return features.map((v, i) => (v - weights.mean[i]) / weights.std[i]);
+}
+
+export function actionValues(obs, { trials = 260, random = Math.random, weights = NEURAL_WEIGHTS, equity } = {}) {
+  const eq = equity ?? simulateEquity(obs, trials, random).equity;
+  const features = neuralFeatures(obs, eq);
+  const raw = forward(weights, normalize(weights, features));
+  const mask = legalMask(obs);
+  const values = raw.map((v, i) => mask[i] ? v * weights.scale : null);
+  // Folding is exactly zero from here; checking is never worse than folding.
+  if (mask[0]) values[0] = 0;
+  return { values, equity: eq, mask };
+}
+
+// Personalities follow KL-regularized search (Jacob et al., "Modeling Strong and
+// Human-Like Gameplay with KL-Regularized Search", ICML 2022): each bot keeps a
+// human-like anchor style and the network moves it only where the estimated gain
+// is worth it. lambda = how strongly the anchor holds; temperature = how much the
+// value estimates matter (in big blinds). Bots see only their own cards.
+export const PERSONAS = {
+  shark:   { name: 'Shark',   lambda: 1.3, temperature: 1.0, anchor: TRAINED_POLICY },
+  rock:    { name: 'Rock',    lambda: 2.2, temperature: 1.6,
+             anchor: { ...TRAINED_POLICY, openEarly: .72, openLate: .52, value: .66, aggression: .6, bluff: 0 } },
+  maniac:  { name: 'Maniac',  lambda: 1.6, temperature: 1.4,
+             anchor: { ...DEFAULT_POLICY, openEarly: .46, openLate: .26, value: .5, aggression: .95, bluff: .14, size: .9 } },
+  calling: { name: 'Station', lambda: 2.0, temperature: 1.8,
+             anchor: { ...DEFAULT_POLICY, openEarly: .7, openLate: .55, defend: -.05, aggression: .35, bluff: .02, size: .5 } },
+  tricky:  { name: 'Tricky',  lambda: 1.3, temperature: 1.2,
+             anchor: { ...DEFAULT_POLICY, openLate: .36, aggression: .8, bluff: .12, size: .7 } },
+};
+export const SEAT_PERSONAS = [null, 'tricky', 'rock', 'maniac', 'shark', 'calling'];
+
+function anchorIndex(obs, decision) {
+  if (decision.action === 'fold') return 0;
+  if (decision.action === 'call') return 1;
+  const sizes = [2, 3, 4].map(i => [i, Math.abs(actionAmount(obs, i) - decision.amount)]);
+  return sizes.sort((a, b) => a[1] - b[1])[0][0];
+}
+
+export function chooseNeuralDecision(obs, { persona = 'shark', random = Math.random, trials = 260 } = {}) {
+  const style = PERSONAS[persona] || PERSONAS.shark;
+  const { values, equity, mask } = actionValues(obs, { trials, random });
+  // Anchor: what this personality's hand-written style would do here.
+  const anchorMove = strategicAction(obs, style.anchor, random, 60, equity);
+  const anchor = anchorIndex(obs, anchorMove);
+  const legalCount = mask.filter(Boolean).length;
+  const prior = mask.map((ok, i) => !ok ? 0 : i === anchor ? 0.72 : 0.28 / Math.max(1, legalCount - 1));
+  const logits = values.map((v, i) => v === null || !prior[i] ? -Infinity : style.lambda * Math.log(prior[i]) + v / style.temperature);
+  const top = Math.max(...logits);
+  const weights = logits.map(l => Number.isFinite(l) ? Math.exp(l - top) : 0);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = random() * total, index = logits.indexOf(top);
+  for (let i = 0; i < weights.length; i++) { roll -= weights[i]; if (roll <= 0 && weights[i] > 0) { index = i; break; } }
+  const decision = toDecision(obs, index);
+  const ranked = values.map((v, i) => [NEURAL_ACTIONS[i], v === null ? null : Math.round(v * 10) / 10]).filter(([, v]) => v !== null);
+  return { ...decision, analysis: { model: 'neural', persona: style.name, equity, values: Object.fromEntries(ranked),
+    anchor: NEURAL_ACTIONS[anchor], choice: NEURAL_ACTIONS[index] } };
+}
