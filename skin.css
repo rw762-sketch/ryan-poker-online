@@ -1957,3 +1957,104 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
 @keyframes caret { 50% { opacity: 0; } }
 #log { font-family: var(--hud); font-size: 14px; line-height: 1.75; color: #c9bfff; padding-left: 22px; }
 #log li::marker { color: var(--neon-pink); content: "› "; }
+
+/* ===== Stacks you can see ===== */
+.seat-identity { position: relative; }
+.stack-pile {
+  position: absolute;
+  bottom: 4px;
+  right: calc(100% + 6px);
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px #000a);
+}
+.seat-4 .stack-pile, .seat-5 .stack-pile { right: auto; left: calc(100% + 6px); }
+.seat-0 .stack-pile { right: calc(100% + 10px); }
+.stack-pile .chip { width: 22px; height: 8px; margin-top: -5px; }
+.stack-pile .chip-col .chip:first-child { margin-top: 0; }
+.seat-0 .stack-pile .chip { width: 26px; height: 9px; }
+.seat.folded .stack-pile { opacity: .55; }
+@media (max-width: 700px) {
+  .stack-pile { bottom: auto; top: calc(100% + 2px); right: 50%; translate: 50% 0; }
+  .seat-4 .stack-pile, .seat-5 .stack-pile { left: auto; right: 50%; }
+  .seat:not(.seat-0) .stack-pile .chip { width: 15px; height: 6px; margin-top: -4px; }
+  .seat:not(.seat-0) .player-action { margin-top: 14px; }
+  .seat-0 .stack-pile { top: auto; bottom: 6px; right: calc(100% + 8px); translate: 0; }
+}
+
+/* ===== Faces that react ===== */
+.avatar .face i, .avatar .face u, .avatar .face em { transition: all 260ms var(--spring-brisk); }
+.avatar .face em { position: absolute; font-style: normal; pointer-events: none; line-height: 1; }
+
+/* thinking: eyes glance up and to the side, small mouth */
+[data-mood="think"] .avatar .face i, [data-mood="sweat"] .avatar .face i { translate: 2px -3px; }
+[data-mood="think"] .avatar .face u { width: 6px; height: 0; border-width: 2px 0 0; border-radius: 2px; }
+/* facing a big bet: worried mouth and a sweat drop */
+[data-mood="sweat"] .avatar .face u { width: 8px; height: 4px; border-width: 2px 0 0 0; border-radius: 9px 9px 0 0; translate: -50% 2px; }
+[data-mood="sweat"] .avatar .face em { right: -2px; top: -2px; width: 7px; height: 10px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #8fd8ff; box-shadow: inset -1px -2px 0 #4aa8e0; }
+/* raised: smug half-closed eyes and a smirk */
+[data-mood="smug"] .avatar .face i { height: 4px; top: 44%; border-radius: 0 0 6px 6px; box-shadow: none; }
+[data-mood="smug"] .avatar .face u { width: 10px; rotate: -10deg; }
+/* all in: > < eyes, blush, a little fire */
+[data-mood="allin"] .avatar .face i { width: 7px; height: 7px; background: none; border: solid #1b1233; border-width: 2px 2px 0 0; border-radius: 0; box-shadow: none; }
+[data-mood="allin"] .avatar .face i:first-child { rotate: 45deg; }
+[data-mood="allin"] .avatar .face i:nth-child(2) { rotate: -135deg; }
+[data-mood="allin"] .avatar .face u { width: 11px; height: 6px; background: #1b1233; border-radius: 2px 2px 8px 8px; }
+[data-mood="allin"] .avatar .face { background: radial-gradient(circle at 22% 66%, #ff6b9e88 0 4px, transparent 5px), radial-gradient(circle at 78% 66%, #ff6b9e88 0 4px, transparent 5px); }
+[data-mood="allin"] .avatar .face em::after { content: "🔥"; font-size: 14px; position: absolute; left: -26px; top: -14px; }
+/* won: ^ ^ eyes, big grin, sparkles */
+[data-mood="win"] .avatar .face i { width: 8px; height: 5px; background: none; border: 2px solid #1b1233; border-bottom: 0; border-radius: 8px 8px 0 0; box-shadow: none; top: 38%; }
+[data-mood="win"] .avatar .face u { width: 14px; height: 7px; background: #1b1233; border-radius: 0 0 10px 10px; box-shadow: inset 0 -3px 0 #ff6b9e; }
+[data-mood="win"] .avatar .face em::after { content: "✨"; font-size: 15px; position: absolute; left: 14px; top: -20px; }
+/* lost big: droopy eyes, frown, tear */
+[data-mood="sad"] .avatar .face i { translate: 0 2px; height: 7px; }
+[data-mood="sad"] .avatar .face u { border-width: 2px 2px 0; border-radius: 9px 9px 0 0; translate: -50% 3px; }
+[data-mood="sad"] .avatar .face em { left: 26%; top: 58%; width: 5px; height: 7px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #8fd8ff; }
+/* folded: asleep */
+[data-mood="sleep"] .avatar .face em::after { content: "💤"; font-size: 13px; position: absolute; left: 12px; top: -16px; }
+/* on tilt: angry brows */
+[data-mood="angry"] .avatar .face i { border-top: 2px solid #1b1233; border-radius: 0 0 50% 50%; }
+[data-mood="angry"] .avatar .face i:first-child { rotate: 18deg; }
+[data-mood="angry"] .avatar .face i:nth-child(2) { rotate: -18deg; }
+[data-mood="angry"] .avatar .face u { border-width: 2px 2px 0; border-radius: 9px 9px 0 0; translate: -50% 2px; }
+[data-mood="angry"] .avatar .face em::after { content: "💢"; font-size: 12px; position: absolute; left: 16px; top: -12px; }
+/* out of chips: x x */
+[data-mood="busted"] .avatar { filter: saturate(.2) brightness(.8); }
+[data-mood="busted"] .avatar .face i { background: none; box-shadow: none; width: 8px; height: 8px; }
+[data-mood="busted"] .avatar .face i::before { content: "✕"; position: absolute; inset: -3px 0 0; font: 800 9px/1 var(--hud); color: #1b1233; text-align: center; }
+[data-mood="away"] .avatar { filter: grayscale(1) brightness(.7); }
+/* talking: mouth opens */
+.seat.talking .avatar .face u { height: 6px; width: 8px; background: #1b1233; border-radius: 50%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-mood="sweat"] .avatar .face em { animation: drip 1.6s ease-in infinite; }
+  @keyframes drip { 0% { translate: 0 0; opacity: 1; } 80% { translate: 0 8px; opacity: 1; } 100% { translate: 0 10px; opacity: 0; } }
+  [data-mood="sad"] .avatar .face em { animation: drip 2.2s ease-in infinite; }
+  [data-mood="sleep"] .avatar .face em::after { animation: zz 2.4s ease-in-out infinite; }
+  @keyframes zz { 0% { translate: 0 4px; opacity: 0; } 30% { opacity: 1; } 100% { translate: 8px -10px; opacity: 0; } }
+  [data-mood="win"] .avatar { animation: hop .7s var(--spring-bouncy) 3; }
+  [data-mood="win"] .avatar .face em::after { animation: twinkle 1s ease-in-out infinite; }
+  @keyframes twinkle { 50% { scale: 1.3; rotate: 15deg; } }
+  [data-mood="allin"] .avatar .face em::after { animation: flicker .5s ease-in-out infinite alternate; }
+  @keyframes flicker { to { scale: 1.15; translate: 0 -2px; } }
+  [data-mood="angry"] .avatar { animation: shake .4s ease-in-out 2; }
+  @keyframes shake { 25% { translate: -2px 0; } 75% { translate: 2px 0; } }
+  .seat.talking .avatar .face u { animation: chatter .25s steps(2) 6; }
+  @keyframes chatter { 50% { height: 2px; } }
+}
+.stack-pile { bottom: calc(100% + 4px); top: auto; right: calc(50% + 40px); left: auto; translate: 0 0; }
+.seat-4 .stack-pile, .seat-5 .stack-pile { right: auto; left: calc(50% + 40px); }
+.seat-0 .stack-pile { bottom: calc(100% + 8px); right: calc(50% + 82px); }
+.stack-pile .chip { width: 20px; height: 7px; margin-top: -4px; }
+.seat-0 .stack-pile .chip { width: 24px; height: 8px; margin-top: -5px; }
+@media (max-width: 700px) {
+  .stack-pile, .seat-4 .stack-pile, .seat-5 .stack-pile { top: auto; bottom: calc(100% + 2px); translate: 0 0; }
+  .stack-pile { right: calc(50% + 30px); left: auto; }
+  .seat-4 .stack-pile, .seat-5 .stack-pile { left: calc(50% + 30px); right: auto; }
+  .seat:not(.seat-0) .stack-pile .chip { width: 14px; height: 5px; margin-top: -3px; }
+  .seat:not(.seat-0) .player-action { margin-top: 2px; }
+  .seat-0 .stack-pile { bottom: calc(100% + 6px); right: calc(50% + 60px); }
+}
+.stack-pile .chip.c100 { --c: #4a3f72; --edge: #e9e4ff; }
+@media (max-width: 700px) {
+  .seat-1 .stack-pile, .seat-2 .stack-pile { right: auto; left: calc(50% + 32px); bottom: calc(100% + 40px); }
+}

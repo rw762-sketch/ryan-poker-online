@@ -1,18 +1,18 @@
-import { playerOutcome } from './player-outcome.js?v=1c7d05e7291b';
-import { celebrateTable } from './celebration.js?v=1c7d05e7291b';
-import { gtoThinkTime } from './gto.js?v=1c7d05e7291b';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=1c7d05e7291b';
-import { PlayerMemory } from './player-memory.js?v=1c7d05e7291b';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=1c7d05e7291b';
-import { tableSnapshot, animateTable } from './motion.js?v=1c7d05e7291b';
-import { LobbyClient, ServerRoom } from './server-room.js?v=1c7d05e7291b';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=1c7d05e7291b';
-import { bindLobby } from './lobby.js?v=1c7d05e7291b';
-import { OnlineRoom } from './multiplayer.js?v=1c7d05e7291b';
-import { readObservation } from './strategy.js?v=1c7d05e7291b';
-import { randomStyle, driftStyle } from './neural-policy.js?v=1c7d05e7291b';
-import { replyTo, reactTo } from './table-talk.js?v=1c7d05e7291b';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=1c7d05e7291b';
+import { playerOutcome } from './player-outcome.js?v=45157f8cabbe';
+import { celebrateTable } from './celebration.js?v=45157f8cabbe';
+import { gtoThinkTime } from './gto.js?v=45157f8cabbe';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=45157f8cabbe';
+import { PlayerMemory } from './player-memory.js?v=45157f8cabbe';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=45157f8cabbe';
+import { tableSnapshot, animateTable } from './motion.js?v=45157f8cabbe';
+import { LobbyClient, ServerRoom } from './server-room.js?v=45157f8cabbe';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=45157f8cabbe';
+import { bindLobby } from './lobby.js?v=45157f8cabbe';
+import { OnlineRoom } from './multiplayer.js?v=45157f8cabbe';
+import { readObservation } from './strategy.js?v=45157f8cabbe';
+import { randomStyle, driftStyle } from './neural-policy.js?v=45157f8cabbe';
+import { replyTo, reactTo } from './table-talk.js?v=45157f8cabbe';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=45157f8cabbe';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -80,14 +80,17 @@ function render() {
 }
 // Chips: break an amount into poker denominations and stack them in columns.
 const DENOMS = [[500, 'c500'], [100, 'c100'], [25, 'c25'], [5, 'c5'], [1, 'c1']];
-function chipPile(amount, maxColumns = 3) {
+// Stacks use smaller chips so their height reads as wealth at a glance.
+const STACK_DENOMS = [[100, 'c100'], [25, 'c25'], [5, 'c5']];
+function chipPile(amount, maxColumns = 3, denoms = DENOMS) {
   if (!amount) return '';
   const chips = [];
   let left = amount;
-  for (const [value, cls] of DENOMS) { while (left >= value && chips.length < 40) { chips.push(cls); left -= value; } }
+  for (const [value, cls] of denoms) { while (left >= value && chips.length < 36) { chips.push(cls); left -= value; } }
+  if (!chips.length) chips.push(denoms.at(-1)[1]);
   const columns = [];
   for (const cls of chips) {
-    let column = columns.find(c => c[0] === cls && c.length < 10);
+    let column = columns.find(c => c.length < 12 && (denoms === STACK_DENOMS || c[0] === cls));
     if (!column) { if (columns.length >= maxColumns) column = columns[columns.length - 1]; else columns.push(column = []); }
     if (column.length < 12) column.push(cls);
   }
@@ -109,10 +112,24 @@ function renderTable(v) {
     const occupied = !room || p.occupied;
     const name = room && i === 0 ? `${p.name} (you)` : p.name;
     const action = !occupied ? 'Invite a friend' : room && !p.online ? 'Disconnected' : p.action;
-    return `<div class="seat seat-${i} ${p.sittingOut ? 'seat-off' : ''} ${!v.done && v.turn === i ? 'active' : ''} ${p.folded && v.hand ? 'folded' : ''} ${!occupied ? 'empty-seat' : ''}">
-      ${i ? `<div class="avatar" style="--hue:${[0, 330, 190, 268, 150, 28][i]}">${occupied ? `<span class="face" aria-hidden="true"><i></i><i></i><u></u></span><b>${escape(p.name[0])}</b>` : '+'}</div>` : ''}
+    // Facial expression for the seat's character, from public table state only.
+    const award = v.done ? (v.awards || []).find(a => a.seat === i) : null;
+    const owed = Math.max(0, (v.players.reduce((m, q) => Math.max(m, q.bet || 0), 0)) - (p.bet || 0));
+    const mood = !occupied ? 'empty'
+      : room && !p.online ? 'away'
+      : v.done && v.hand && award && award.profit > 0 ? 'win'
+      : v.done && v.hand && !p.folded && p.total >= 100 && !award ? 'sad'
+      : p.stack === 0 && !p.allIn && v.hand ? 'busted'
+      : p.folded && v.hand ? 'sleep'
+      : !v.done && v.turn === i ? (owed > Math.max(60, v.pot * .5) ? 'sweat' : 'think')
+      : p.allIn ? 'allin'
+      : /^Raise/.test(p.action || '') ? 'smug'
+      : !room && botStyles[i]?.tilt > .3 ? 'angry'
+      : 'idle';
+    return `<div class="seat seat-${i} ${p.sittingOut ? 'seat-off' : ''} ${!v.done && v.turn === i ? 'active' : ''} ${p.folded && v.hand ? 'folded' : ''} ${!occupied ? 'empty-seat' : ''}" data-mood="${mood}">
+      ${i ? `<div class="avatar" style="--hue:${[0, 330, 190, 268, 150, 28][i]}">${occupied ? `<span class="face" aria-hidden="true"><i></i><i></i><u></u><em></em></span><b>${escape(p.name[0])}</b>` : '+'}</div>` : ''}
       <div class="cards">${p.cards.map(c => card(c, room ? c === null : i !== 0 && !(v.done && v.stage === 4 && !p.folded))).join('')}</div>
-      <div class="seat-identity"><div class="nameplate"><div class="player-name">${escape(name)}${v.dealer === i ? '<span class="badge" title="Dealer">D</span>' : ''}</div><div class="stack">${occupied ? p.stack.toLocaleString() : '—'}</div></div>
+      <div class="seat-identity"><div class="nameplate"><div class="player-name">${escape(name)}${v.dealer === i ? '<span class="badge" title="Dealer">D</span>' : ''}</div><div class="stack">${occupied ? p.stack.toLocaleString() : '—'}</div></div>${occupied && p.stack ? `<div class="stack-pile" aria-hidden="true">${chipPile(p.stack, 3, STACK_DENOMS)}</div>` : ''}
       ${i && occupied && (!room || p.online) ? `<button type="button" class="seat-drink" data-gift-seat="${room ? (i + room.me) % v.players.length : i}" aria-label="Buy ${escape(p.name)} a drink" title="Buy ${escape(p.name)} a drink" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16l-8 9L4 4Zm8 9v7m-4 0h8M6 7h12"/></svg></button>` : ''}</div>
       <div class="player-action">${escape(action || ' ')}</div>${!v.done && p.bet ? `<div class="bet-pile" title="${p.bet.toLocaleString()} chips bet">${chipPile(p.bet, 2)}<b>${p.bet.toLocaleString()}</b></div>` : ''}</div>`;
   }).join('');
@@ -256,6 +273,8 @@ function placeTalk(fresh) {
   bubble.textContent = talk.text; bubble.setAttribute('role', 'status');
   bubble.style.setProperty('--left', `${Math.max(0, talk.until - Date.now() - 300)}ms`);
   target.append(bubble);
+  target.classList.add('talking');
+  setTimeout(() => target.classList.remove('talking'), 1600);
 }
 // Typed chat. In rooms it goes to everyone; at the solo table the bots may answer.
 function botReply(text) {
