@@ -1,4 +1,4 @@
-import { describeHand, compareHandsText } from './hand-description.js?v=6979f681616d';
+import { describeHand, compareHandsText } from './hand-description.js?v=6c205a666ec4';
 export const SEATS=6;
 export const SEAT_NAMES=['You','Jules','Morgan','Alex','Riley','Sam'];
 export const labels=['High card','One pair','Two pair','Three of a kind','Straight','Flush','Full house','Four of a kind','Straight flush'];

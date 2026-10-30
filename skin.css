@@ -1586,3 +1586,91 @@ footer button:not(:disabled):hover { background: none; color: var(--brass); }
 .connection-results .ok { color: var(--win); }
 .connection-results .bad { color: #f08a8d; }
 .connection-tip { font-size: 13px; color: var(--muted); }
+
+/* ===== Chip piles ===== */
+.chip-pile { display: inline-flex; align-items: flex-end; gap: 2px; padding-top: 6px; }
+.chip-col { display: flex; flex-direction: column-reverse; rotate: var(--lean, 0deg); transform-origin: 50% 100%; }
+.chip {
+  --c: #e9e4d6; --edge: #2f62d6;
+  display: block;
+  width: 26px;
+  height: 9px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: repeating-linear-gradient(90deg, var(--c) 0 4px, var(--edge) 4px 6.5px);
+  box-shadow: 0 1.5px 0 color-mix(in srgb, var(--c) 55%, #000), 0 2px 3px #0007;
+}
+.chip-col .chip:first-child { margin-top: 0; }
+.chip-col .chip:last-child {
+  background:
+    radial-gradient(ellipse 52% 46% at 50% 50%, var(--c) 58%, transparent 60%),
+    radial-gradient(ellipse 66% 60% at 50% 50%, transparent 55%, #fff 56% 62%, transparent 64%),
+    repeating-conic-gradient(var(--c) 0 25deg, #fff 25deg 40deg);
+}
+.chip.c1   { --c: #ece7da; --edge: #2f62d6; }
+.chip.c5   { --c: #c8323a; --edge: #fff; }
+.chip.c25  { --c: #2f8a5f; --edge: #fff; }
+.chip.c100 { --c: #23242c; --edge: #e9e4d6; }
+.chip.c500 { --c: #7b3fc4; --edge: #f2c46b; }
+
+.pot-pile { min-height: 34px; display: flex; justify-content: center; }
+.pot-pile .chip { width: 30px; height: 10px; margin-top: -6px; }
+.pot-pile .chip-col .chip:first-child { margin-top: 0; }
+
+.bet-pile {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+.bet-pile b {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--brass-hi);
+  text-shadow: 0 1px 3px #000c;
+  line-height: 1;
+}
+.seat-0 .bet-pile { left: calc(50% + 92px); top: 6px; }
+.seat-1 .bet-pile { left: calc(100% + 18px); top: 64px; }
+.seat-2 .bet-pile { left: calc(100% + 4px); top: calc(100% - 16px); }
+.seat-3 .bet-pile { left: 50%; top: calc(100% + 4px); translate: -50% 0; }
+.seat-4 .bet-pile { right: calc(100% + 4px); top: calc(100% - 16px); }
+.seat-5 .bet-pile { right: calc(100% + 18px); top: 64px; }
+@media (max-width: 700px) {
+  .chip { width: 20px; height: 7px; margin-top: -4px; }
+  .pot-pile .chip { width: 22px; height: 8px; margin-top: -5px; }
+  .bet-pile b { font-size: 12px; }
+  .seat-0 .bet-pile { left: calc(50% + 62px); top: 0; }
+  .seat-1 .bet-pile, .seat-2 .bet-pile { left: calc(100% - 4px); top: auto; bottom: -6px; }
+  .seat-4 .bet-pile, .seat-5 .bet-pile { right: calc(100% - 4px); top: auto; bottom: -6px; }
+  .seat-3 .bet-pile { top: calc(100% - 2px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bet-pile { animation: pile-in 520ms var(--spring-brisk) both; }
+  @keyframes pile-in { from { opacity: 0; translate: 0 -8px; } }
+  .seat-3 .bet-pile { animation-name: pile-in-center; }
+  @keyframes pile-in-center { from { opacity: 0; translate: -50% -8px; } }
+}
+.board-area { position: absolute; }
+.pot-pile { position: absolute; left: 50%; top: -40px; translate: -50% 0; min-height: 0; pointer-events: none; }
+
+/* Table size picker and seats that sit out */
+.seat-off { display: none; }
+.seat-picker { display: flex; align-items: center; gap: 6px; border: 0; margin: 0; padding: 0; }
+.seat-picker legend { float: left; font-family: var(--hand); font-size: 24px; color: var(--muted); margin-right: 6px; padding: 0; }
+.seat-picker label { position: relative; cursor: pointer; }
+.seat-picker input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.seat-picker span {
+  display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  font-family: var(--display); font-weight: 800; font-size: 17px;
+  color: var(--muted);
+  border: 1.5px dashed var(--line-strong);
+  transition: background 200ms ease, color 200ms ease, border-color 200ms ease, scale 500ms var(--spring-bouncy);
+}
+.seat-picker label:hover span { border-color: var(--brass); color: var(--text); }
+.seat-picker input:checked + span { background: var(--text); color: var(--card-ink); border: 1.5px solid var(--text); scale: 1.08; }
+.seat-picker input:focus-visible + span { outline: 2px solid var(--brass); outline-offset: 3px; }

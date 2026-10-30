@@ -1,5 +1,5 @@
-import { evaluate } from './engine.js?v=6979f681616d';
-import { describeHand, compareHandsText } from './hand-description.js?v=6979f681616d';
+import { evaluate } from './engine.js?v=6c205a666ec4';
+import { describeHand, compareHandsText } from './hand-description.js?v=6c205a666ec4';
 const possessiveHand = score => describeHand(score).replace(/^a /, '');
 
 // Generate this on the authority for a single viewer; folded cards never enter it.

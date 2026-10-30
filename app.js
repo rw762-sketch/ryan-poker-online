@@ -1,17 +1,18 @@
-import { playerOutcome } from './player-outcome.js?v=6979f681616d';
-import { celebrateTable } from './celebration.js?v=6979f681616d';
-import { gtoThinkTime } from './gto.js?v=6979f681616d';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=6979f681616d';
-import { PlayerMemory } from './player-memory.js?v=6979f681616d';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=6979f681616d';
-import { tableSnapshot, animateTable } from './motion.js?v=6979f681616d';
-import { LobbyClient, ServerRoom } from './server-room.js?v=6979f681616d';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=6979f681616d';
-import { bindLobby } from './lobby.js?v=6979f681616d';
-import { OnlineRoom } from './multiplayer.js?v=6979f681616d';
-import { readObservation } from './strategy.js?v=6979f681616d';
-import { randomStyle, driftStyle } from './neural-policy.js?v=6979f681616d';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=6979f681616d';
+import { playerOutcome } from './player-outcome.js?v=6c205a666ec4';
+import { celebrateTable } from './celebration.js?v=6c205a666ec4';
+import { gtoThinkTime } from './gto.js?v=6c205a666ec4';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=6c205a666ec4';
+import { PlayerMemory } from './player-memory.js?v=6c205a666ec4';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=6c205a666ec4';
+import { tableSnapshot, animateTable } from './motion.js?v=6c205a666ec4';
+import { LobbyClient, ServerRoom } from './server-room.js?v=6c205a666ec4';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=6c205a666ec4';
+import { bindLobby } from './lobby.js?v=6c205a666ec4';
+import { OnlineRoom } from './multiplayer.js?v=6c205a666ec4';
+import { readObservation } from './strategy.js?v=6c205a666ec4';
+import { randomStyle, driftStyle } from './neural-policy.js?v=6c205a666ec4';
+import { replyTo, reactTo } from './table-talk.js?v=6c205a666ec4';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction } from './ai.js?v=6c205a666ec4';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -32,7 +33,7 @@ function soloAction(action,amount) {
   const observed=playerMemory.capture(game,action,amount);
   if(!game.act(action,amount))return false;
   playerMemory.record(observed);
-  if(game.done){playerMemory.finish();savePlayerMemory();
+  if(game.done){playerMemory.finish();savePlayerMemory();reactToHand();
     botStyles=botStyles.map((style,i)=>{ const award=(game.awards||[]).find(a=>a.seat===i); return i?driftStyle(style,award?award.profit:-game.players[i].total):style; });}
   return true;
 }
@@ -77,9 +78,30 @@ function render() {
   lastFrame = nextFrame;
   renderRoom();
 }
+// Chips: break an amount into poker denominations and stack them in columns.
+const DENOMS = [[500, 'c500'], [100, 'c100'], [25, 'c25'], [5, 'c5'], [1, 'c1']];
+function chipPile(amount, maxColumns = 3) {
+  if (!amount) return '';
+  const chips = [];
+  let left = amount;
+  for (const [value, cls] of DENOMS) { while (left >= value && chips.length < 40) { chips.push(cls); left -= value; } }
+  const columns = [];
+  for (const cls of chips) {
+    let column = columns.find(c => c[0] === cls && c.length < 10);
+    if (!column) { if (columns.length >= maxColumns) column = columns[columns.length - 1]; else columns.push(column = []); }
+    if (column.length < 12) column.push(cls);
+  }
+  return `<span class="chip-pile" aria-hidden="true">${columns.map((c, x) =>
+    `<span class="chip-col" style="--x:${x};--lean:${(tilt(x * 13 + amount) / 2).toFixed(2)}deg">${c.map((cls, y) => `<i class="chip ${cls}" style="--y:${y}"></i>`).join('')}</span>`).join('')}</span>`;
+}
 function renderTable(v) {
   tiltSalt = (v.hand * 7919 + 13) | 0; tiltCount = 0;
   $('pot').textContent = v.pot.toLocaleString();
+  let potPile = document.getElementById('potPile');
+  if (!potPile) { potPile = document.createElement('div'); potPile.id = 'potPile'; potPile.className = 'pot-pile'; document.querySelector('.board-area')?.prepend(potPile); }
+  // The pot shows chips already collected; this street's bets sit in front of each player.
+  const bets = v.players.reduce((n, p) => n + (p.bet || 0), 0);
+  potPile.innerHTML = chipPile(Math.max(0, v.pot - (v.done ? 0 : bets)), 4);
   $('handNo').textContent = `HAND ${String(v.hand).padStart(2, '0')}`;
   $('board').innerHTML = Array.from({ length:5 }, (_, i) => card(v.board[i])).join('');
   $('street').textContent = room && !v.started ? 'WAITING FOR FRIENDS' : v.done ? 'HAND COMPLETE' : ['PRE-FLOP','FLOP','TURN','RIVER'][v.stage];
@@ -87,12 +109,12 @@ function renderTable(v) {
     const occupied = !room || p.occupied;
     const name = room && i === 0 ? `${p.name} (you)` : p.name;
     const action = !occupied ? 'Invite a friend' : room && !p.online ? 'Disconnected' : p.action;
-    return `<div class="seat seat-${i} ${!v.done && v.turn === i ? 'active' : ''} ${p.folded && v.hand ? 'folded' : ''} ${!occupied ? 'empty-seat' : ''}">
+    return `<div class="seat seat-${i} ${p.sittingOut ? 'seat-off' : ''} ${!v.done && v.turn === i ? 'active' : ''} ${p.folded && v.hand ? 'folded' : ''} ${!occupied ? 'empty-seat' : ''}">
       ${i ? `<div class="avatar">${occupied ? escape(p.name[0]) : '+'}</div>` : ''}
       <div class="cards">${p.cards.map(c => card(c, room ? c === null : i !== 0 && !(v.done && v.stage === 4 && !p.folded))).join('')}</div>
       <div class="seat-identity"><div class="nameplate"><div class="player-name">${escape(name)}${v.dealer === i ? '<span class="badge" title="Dealer">D</span>' : ''}</div><div class="stack">${occupied ? p.stack.toLocaleString() : '—'}</div></div>
       ${i && occupied && (!room || p.online) ? `<button type="button" class="seat-drink" data-gift-seat="${room ? (i + room.me) % v.players.length : i}" aria-label="Buy ${escape(p.name)} a drink" title="Buy ${escape(p.name)} a drink" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16l-8 9L4 4Zm8 9v7m-4 0h8M6 7h12"/></svg></button>` : ''}</div>
-      <div class="player-action">${escape(action || ' ')}</div></div>`;
+      <div class="player-action">${escape(action || ' ')}</div>${!v.done && p.bet ? `<div class="bet-pile" title="${p.bet.toLocaleString()} chips bet">${chipPile(p.bet, 2)}<b>${p.bet.toLocaleString()}</b></div>` : ''}</div>`;
   }).join('');
   $('log').innerHTML = v.logs.map(line => `<li>${escape(line)}</li>`).join('');
   placeTalk(false);
@@ -236,20 +258,34 @@ function placeTalk(fresh) {
   target.append(bubble);
 }
 // Typed chat. In rooms it goes to everyone; at the solo table the bots may answer.
-const SOLO_REPLIES = {
-  calm: ['good luck', 'we’ll see', 'nice', 'hm', 'fair enough', 'ha'],
-  bold: ['bring it', 'you sure about that?', 'big talk', 'show me', 'not folding this time'],
-  tilted: ['…', 'just deal', 'unreal', 'not now'],
-};
 function botReply(text) {
-  const live = game.players.flatMap((p, i) => i && !p.folded && p.stack > 0 ? [i] : []);
-  if (!live.length || Math.random() < .35) return;
-  const seat = live[Math.floor(Math.random() * live.length)];
-  const style = botStyles[seat] || {};
-  const mood = style.tilt > .3 ? 'tilted' : style.aggressive > .6 ? 'bold' : 'calm';
-  const pool = SOLO_REPLIES[mood];
-  const reply = /\?$/.test(text) && mood === 'calm' ? 'maybe' : pool[Math.floor(Math.random() * pool.length)];
-  setTimeout(() => showTalk(seat, reply), 900 + Math.random() * 1600);
+  const live = game.players.flatMap((p, i) => i && !p.sittingOut && p.stack + p.total > 0 ? [i] : []);
+  if (!live.length) return;
+  // Someone named in the message answers; otherwise a random player might.
+  const named = live.find(i => new RegExp(`\\b${game.players[i].name}\\b`, 'i').test(text));
+  const order = named ? [named] : live.sort(() => Math.random() - .5).slice(0, 2);
+  let delay = 700 + Math.random() * 1200;
+  for (const seat of order) {
+    const line = replyTo(text, { style: botStyles[seat], you: game.players[0].name === 'You' ? 'you' : game.players[0].name,
+      pot: game.pot, hand: game.hand, userStack: game.players[0].stack }, Math.random);
+    if (!line) continue;
+    setTimeout(() => showTalk(seat, line), delay);
+    delay += 1400 + Math.random() * 1600;
+    if (Math.random() < .6) break;
+  }
+}
+// After a hand, a bot sometimes reacts to a big swing.
+function reactToHand() {
+  if (room || !game.done) return;
+  const awards = game.awards || [];
+  const big = awards.filter(a => a.profit >= 300).sort((a, b) => b.profit - a.profit)[0];
+  const loser = game.players.map((p, i) => [i, p.total]).filter(([i, t]) => i && t >= 300 && !awards.some(a => a.seat === i)).sort((a, b) => b[1] - a[1])[0];
+  let seat = null, kind = null;
+  if (big && big.seat !== 0) { seat = big.seat; kind = 'won-big'; }
+  else if (loser) { seat = loser[0]; kind = big?.seat === 0 && Math.random() < .5 ? 'user-won-big' : 'lost-big'; }
+  if (seat === null) return;
+  const line = reactTo(kind, { style: botStyles[seat], you: 'you', pot: game.pot, hand: game.hand }, Math.random);
+  if (line) setTimeout(() => showTalk(seat, line), 1200 + Math.random() * 900);
 }
 async function liveChatReply(text) {
   const live = game.players.flatMap((p, i) => i && !p.folded && p.stack > 0 ? [i] : []);
@@ -306,14 +342,35 @@ function schedule() {
     act(decision.action, decision.amount);
   }, handDifficulty === 'live' ? 250 : thinkTime());
 }
-function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
+// Table size: which seats are in play for 2–6 players, spaced evenly around the felt.
+const SEAT_LAYOUTS = { 2:[0,3], 3:[0,2,4], 4:[0,1,3,5], 5:[0,1,2,4,5], 6:[0,1,2,3,4,5] };
+let tableSize = 6;
+try { tableSize = Math.min(6, Math.max(2, Number(localStorage.getItem('river-room-seats')) || 6)); } catch {}
+function applyTableSize() {
+  const seats = SEAT_LAYOUTS[tableSize] || SEAT_LAYOUTS[6];
+  game.players.forEach((p, i) => {
+    if (!i) return;
+    if (!seats.includes(i)) { if (!p.sittingOut) { p.parkedStack = p.stack; p.sittingOut = true; } p.stack = 0; }
+    else if (p.sittingOut) { p.stack = p.parkedStack || 1000; p.sittingOut = false; }
+  });
+}
+document.querySelectorAll('input[name="tableSize"]').forEach(input => {
+  input.checked = Number(input.value) === tableSize;
+  input.addEventListener('change', () => {
+    tableSize = Number(input.value);
+    try { localStorage.setItem('river-room-seats', String(tableSize)); } catch {}
+    if (!room && game.done) { applyTableSize(); render(); }
+    renderDifficulty();
+  });
+});
+function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; if (!room) applyTableSize(); game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
 function renderDifficulty() {
   $('difficultyPanel').hidden = !!room;
   $('aiMemoryPanel').hidden = !!room || handDifficulty === 'gto';
   document.querySelectorAll('input[name="difficulty"]').forEach(input => { input.checked = input.value === selectedDifficulty; });
   $('difficultyStatus').textContent = selectedDifficulty !== handDifficulty
     ? `${DIFFICULTIES[handDifficulty].name} this hand · ${DIFFICULTIES[selectedDifficulty].name} starts next hand`
-    : `${DIFFICULTIES[selectedDifficulty].name} opponents · ${DIFFICULTIES[selectedDifficulty].description}`
+    : `${DIFFICULTIES[selectedDifficulty].name} opponents · ${DIFFICULTIES[selectedDifficulty].description}${(SEAT_LAYOUTS[tableSize] || []).length !== game.players.filter((p, i) => !p.sittingOut).length ? ` · ${tableSize} seats from the next hand` : ''}`
       + (selectedDifficulty === 'live' && liveOffline ? ' The Live AI server isn’t answering, so the Neural bots are playing for now.' : '');
 }
 document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change', () => {
