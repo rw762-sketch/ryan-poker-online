@@ -1,23 +1,23 @@
-import { playerOutcome } from './player-outcome.js?v=1512f49c5b0b';
-import { celebrateTable } from './celebration.js?v=1512f49c5b0b';
-import { gtoThinkTime } from './gto.js?v=1512f49c5b0b';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=1512f49c5b0b';
-import { PlayerMemory } from './player-memory.js?v=1512f49c5b0b';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=1512f49c5b0b';
-import { tableSnapshot, animateTable } from './motion.js?v=1512f49c5b0b';
-import { LobbyClient, ServerRoom } from './server-room.js?v=1512f49c5b0b';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=1512f49c5b0b';
-import { bindLobby } from './lobby.js?v=1512f49c5b0b';
-import { OnlineRoom } from './multiplayer.js?v=1512f49c5b0b';
-import { readObservation } from './strategy.js?v=1512f49c5b0b';
-import { randomStyle, driftStyle, styleThinkTime } from './neural-policy.js?v=1512f49c5b0b';
-import { replyTo, reactTo, drinkLine } from './table-talk.js?v=1512f49c5b0b';
-import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=1512f49c5b0b';
-import { styleLabel } from './neural-policy.js?v=1512f49c5b0b';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=1512f49c5b0b';
-import { loadTableConfig, saveTableConfig, cleanTableConfig, blindsOf, tableSummary, betPresets, stackDepth } from './table-config.js?v=1512f49c5b0b';
-import { makeDealer, dealerEvent, dealerIdle, dealerTip } from './dealer.js?v=1512f49c5b0b';
-import { startFaces, applyFaces, reactToDrink, lookAt, tasteOf } from './faces.js?v=1512f49c5b0b';
+import { playerOutcome } from './player-outcome.js?v=453e87ac70cb';
+import { celebrateTable } from './celebration.js?v=453e87ac70cb';
+import { gtoThinkTime } from './gto.js?v=453e87ac70cb';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=453e87ac70cb';
+import { PlayerMemory } from './player-memory.js?v=453e87ac70cb';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=453e87ac70cb';
+import { tableSnapshot, animateTable } from './motion.js?v=453e87ac70cb';
+import { LobbyClient, ServerRoom } from './server-room.js?v=453e87ac70cb';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=453e87ac70cb';
+import { bindLobby } from './lobby.js?v=453e87ac70cb';
+import { OnlineRoom } from './multiplayer.js?v=453e87ac70cb';
+import { readObservation } from './strategy.js?v=453e87ac70cb';
+import { randomStyle, driftStyle, styleThinkTime } from './neural-policy.js?v=453e87ac70cb';
+import { replyTo, reactTo, drinkLine, drinkEffect, drunkLevel, soberUp, slur, drunkStyle, drunkLine, mumble, DRUNK_AT } from './table-talk.js?v=453e87ac70cb';
+import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=453e87ac70cb';
+import { styleLabel } from './neural-policy.js?v=453e87ac70cb';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=453e87ac70cb';
+import { loadTableConfig, saveTableConfig, cleanTableConfig, blindsOf, tableSummary, betPresets, stackDepth } from './table-config.js?v=453e87ac70cb';
+import { makeDealer, dealerEvent, dealerIdle, dealerTip } from './dealer.js?v=453e87ac70cb';
+import { startFaces, applyFaces, reactToDrink, lookAt, tasteOf } from './faces.js?v=453e87ac70cb';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -82,12 +82,34 @@ try { playerMemory=new PlayerMemory(JSON.parse(localStorage.getItem(MEMORY_KEY))
 function savePlayerMemory() { try { localStorage.setItem(MEMORY_KEY,JSON.stringify(playerMemory.save())); } catch {} }
 // Each bot seat draws its own style; it drifts a little every hand (more after a big loss).
 let botStyles = Array.from({ length:SEATS }, () => randomStyle());
+// How many cocktails each seat has had. Five and you're drunk: looser play,
+// slurred talk, a wobbly room. Zero-proof drinks sober you up.
+let drinks = Array(SEATS).fill(0);
+// Five cocktails and you pass out for the next hand: you post your blind if
+// you must, fold whatever you're dealt, and wake up sober when it ends.
+let passedOut = Array(SEATS).fill(false), passOutTimer = null;
+const drunkOf = seat => passedOut[seat] ? 1 : drunkLevel(drinks[seat] || 0);
+function applyDrunk() {
+  const you = drunkOf(0);
+  document.body.classList.toggle('tipsy', you > 0 && you < 1);
+  document.body.classList.toggle('drunk', you >= 1);
+  document.body.style.setProperty('--tipsy', you.toFixed(2));
+  document.querySelectorAll('.seat').forEach((el, i) => { const lvl = drunkOf(Number(/seat-(\d+)/.exec(el.className)?.[1] ?? i)); el.dataset.drunk = lvl >= 1 ? 'drunk' : lvl > 0 ? 'tipsy' : ''; });
+}
+// Drunk seats mumble random things every so often.
+setInterval(() => {
+  if (document.hidden || room) return;
+  const drunk = game.players.map((p, i) => i).filter(i => drunkOf(i) >= 1 && !game.players[i].sittingOut);
+  if (!drunk.length || Math.random() > .55 || talk) return;
+  showTalk(drunk[Math.floor(Math.random() * drunk.length)], mumble());
+}, 9000);
 function soloAction(action,amount) {
   const observed=playerMemory.capture(game,action,amount);
   if(!game.act(action,amount))return false;
   playerMemory.record(observed);
   if(game.done){playerMemory.finish();savePlayerMemory();reactToHand();maybeBotRound();
-    botStyles=botStyles.map((style,i)=>{ const award=(game.awards||[]).find(a=>a.seat===i); return i?driftStyle(style,award?award.profit:-game.players[i].total):style; });}
+    botStyles=botStyles.map((style,i)=>{ const award=(game.awards||[]).find(a=>a.seat===i); return i?driftStyle(style,award?award.profit:-game.players[i].total):style; });
+    drinks=drinks.map((d,i)=>passedOut[i]?0:d>=DRUNK_AT?d:soberUp(d));}
   return true;
 }
 let timer = null;
@@ -191,6 +213,7 @@ function renderTable(v) {
   placeTalk(false);
   placeWhy(false);
   applyFaces();
+  applyDrunk();
   const player = v.players[0];
   $('handName').textContent = v.board.length >= 3 && !player.folded && player.cards.length === 2
     ? labels[evaluate([...player.cards, ...v.board])[0]] : 'Your two cards are private.';
@@ -229,6 +252,11 @@ function renderTable(v) {
       const canContinue = player.stack > 0 && v.players.filter(p => p.stack > 0).length > 1;
       button(canContinue ? 'Next hand' : 'Play again', () => { if (!canContinue) game = newSoloGame(); start(); }, 'primary');
     }
+  } else if (v.turn === 0 && !room && passedOut[0]) {
+    $('turnTitle').textContent = 'OUT COLD';
+    $('status').textContent = 'Five cocktails. You fold this one and wake up sober next hand.';
+    clearTimeout(passOutTimer);
+    passOutTimer = setTimeout(() => { if (game.turn === 0 && !game.done) act('fold'); }, 1400);
   } else if (v.turn === 0) {
     const o = options();
     $('turnTitle').textContent = 'YOUR MOVE';
@@ -436,8 +464,9 @@ $('chatForm')?.addEventListener('submit', async event => {
   const text = cleanChat($('chatInput').value);
   if (!text) return;
   $('chatInput').value = '';
-  if (room) { try { room.chat(text); } catch (error) { showRoomError(error.message); } return; }
-  receiveChat({ kind:'chat', from:0, text });
+  const said = slur(text, drunkOf(0));
+  if (room) { try { room.chat(said); } catch (error) { showRoomError(error.message); } return; }
+  receiveChat({ kind:'chat', from:0, text: said });
   if (handDifficulty === 'live' && configured(loadSettings())) {
     const live = game.players.flatMap((p, i) => i && !p.sittingOut && p.stack + p.total > 0 ? [i] : []);
     const named = live.find(i => new RegExp(`\\b${game.players[i].name}\\b`, 'i').test(text));
@@ -505,6 +534,7 @@ if (document.getElementById('aiSettings')) {
 }
 function showTalk(seat, text) {
   if (!text) return;
+  text = slur(text, drunkOf(seat));
   talk = { seat, text, until: Date.now() + 3800 };
   placeTalk(true);
   setTimeout(() => { if (talk && Date.now() >= talk.until) { talk = null; document.querySelectorAll('.talk-bubble').forEach(b => b.remove()); } }, 3900);
@@ -515,13 +545,14 @@ function schedule() {
   const seat = game.turn, hand = game.hand;
   timer = setTimeout(async () => {
     if (room) return;
+    if (passedOut[seat]) { showTalk(seat, mumble()); setTimeout(() => { if (game.turn === seat && game.hand === hand && !game.done) act('fold'); }, 900); return; }
     if (handDifficulty === 'live') {
       const move = await liveMove(seat, hand);
       if (move === 'stale' || room || game.done || game.hand !== hand || game.turn !== seat) return;
       if (move) { act(move.action === 'allin' ? 'allin' : move.action, move.amount); showTalk(seat, move.say); return; }
     }
     const obs = botObservation(game, playerMemory);
-    obs.style = botStyles[game.turn];
+    obs.style = drunkStyle(botStyles[game.turn], drunkOf(game.turn));
     const decision = chooseBotDecision(obs, handDifficulty);
     thoughts[game.turn] = explainDecision(decision, obs);
     act(decision.action, decision.amount);
@@ -590,7 +621,7 @@ if ($('customizeTable')) {
   $('tableForm').onsubmit = event => { event.preventDefault(); useTableSettings(true); };
   $('tableNextHand').onclick = () => useTableSettings(false);
 }
-function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; if (!room) applyTableConfig(); game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
+function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; if (!room) applyTableConfig(); passedOut = room ? passedOut.map(() => false) : drinks.map(d => d >= DRUNK_AT); game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
 function pendingTableNote() {
   if (room) return '';
   const seats = (SEAT_LAYOUTS[tableConfig.seats] || []).length !== game.players.filter(p => !p.sittingOut).length;
@@ -693,9 +724,9 @@ function receiveGift(gift) {
   }
   setTimeout(() => token.remove(), 3400);
 }
-// Drinks cost $1 of table chips at the solo table (1 chip = $1). Online rooms keep
+// Drinks cost $5 of table chips at the solo table (1 chip = $1). Online rooms keep
 // them free because chips there belong to the host's game.
-const DRINK_PRICE = 1;
+const DRINK_PRICE = 5;
 function chargeDrink(seat) {
   if (room) return true;
   const p = game.players[seat];
@@ -705,6 +736,15 @@ function chargeDrink(seat) {
 }
 const sayLater = (seat, line, ms) => line && setTimeout(() => showTalk(seat, line), ms);
 function afterDrink(gift, taste) {
+  const me = room?.me ?? 0, seat = (gift.to - me + SEATS) % SEATS;
+  const before = drunkOf(seat);
+  drinks[seat] = drinkEffect(drinks[seat] || 0, gift.drink, DRINKS[gift.drink].group);
+  applyDrunk();
+  const now = drunkOf(seat);
+  if (now >= 1 && before < 1) {
+    if (seat === 0) $('giftNotice').textContent = `That's ${DRUNK_AT} cocktails. You'll sleep through the next hand, then wake up sober.`;
+    else sayLater(seat, drunkLine({ style: botStyles[seat] || {} }, Math.random), 2600);
+  } else if (now <= 0 && before > 0 && seat === 0) $('giftNotice').textContent = 'Sober again. The cards hold still.';
   if (room || gift.to === 0) return;
   const style = botStyles[gift.to];
   // A drink takes the edge off; tea most of all.
@@ -742,10 +782,11 @@ function maybeBotRound() {
   const bots = game.players.flatMap((p, i) => i && !p.sittingOut && p.stack > 1 ? [i] : []);
   if (!bots.length) return;
   const winner = (game.awards || []).filter(a => a.seat && a.profit >= 400)[0]?.seat;
-  const buyer = winner && Math.random() < .35 ? winner : Math.random() < .1 ? bots[Math.floor(Math.random() * bots.length)] : null;
+  const buyer = winner && Math.random() < .4 ? winner : Math.random() < .22 ? bots[Math.floor(Math.random() * bots.length)] : null;
   if (!buyer) return;
   const others = game.players.flatMap((p, i) => i !== buyer && !p.sittingOut ? [i] : []);
-  const to = Math.random() < .5 ? 0 : others[Math.floor(Math.random() * others.length)];
+  // Half the time it's for you, otherwise for another bot: friends, or someone they want to get drunk.
+  const to = Math.random() < .45 ? 0 : others[Math.floor(Math.random() * others.length)];
   const line = buyer === winner ? ['Drinks on me!', 'Next one’s on me.', 'Celebration round.'][Math.floor(Math.random() * 3)] : '';
   setTimeout(() => { if (game.done) botBuysDrink(buyer, to, line); }, 2600 + Math.random() * 2000);
 }
@@ -925,6 +966,7 @@ $('restart').onclick = () => {
   room = null;
   botStyles = Array.from({ length:SEATS }, () => randomStyle());
   dealer = makeDealer();
+  drinks = Array(SEATS).fill(0); passedOut = Array(SEATS).fill(false);
   clearTimeout(pendingTimer);
   pendingAction = false;
   connectionMessage = '';

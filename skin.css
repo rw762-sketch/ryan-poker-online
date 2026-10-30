@@ -2414,3 +2414,27 @@ dialog h2, .drinks-heading h2, .lobby-table strong, .practice-links strong {
   .dealer-tag { display: none; }
   .dealer-bubble { max-width: 60vw; }
 }
+
+/* ===== Drunk ===== */
+/* seats: blush, woozy eyes, a sway */
+.seat[data-drunk] .avatar .face { background: radial-gradient(circle at 22% 66%, #ff6b9e99 0 5px, transparent 6px), radial-gradient(circle at 78% 66%, #ff6b9e99 0 5px, transparent 6px); }
+.seat[data-drunk="drunk"] .avatar .face i { width: 8px; height: 8px; background: none; border: 2px solid #1b1233; border-radius: 50%; box-shadow: inset 0 0 0 1.5px #ffffff88, inset 0 0 0 3px #1b1233; }
+.seat[data-drunk="drunk"] .avatar .face u { width: 9px; height: 5px; rotate: 14deg; translate: -40% 1px; }
+.seat[data-drunk="drunk"] .avatar .face em::after { content: "🫧"; position: absolute; left: 32px; top: -14px; font-size: 11px; }
+.seat[data-drunk="tipsy"] .avatar .face i { translate: 1px 1px; scale: 1 .8; }
+@media (prefers-reduced-motion: no-preference) {
+  .seat[data-drunk="tipsy"] .avatar { animation: sway 2.6s ease-in-out infinite; }
+  .seat[data-drunk="drunk"] .avatar { animation: drunk-sway 2.2s ease-in-out infinite; }
+  @keyframes drunk-sway { 0%, 100% { rotate: -9deg; translate: -2px 0; } 50% { rotate: 9deg; translate: 2px 1px; } }
+  .seat[data-drunk="drunk"] .avatar .face em::after { animation: bubble-up 2.2s ease-out infinite; }
+  @keyframes bubble-up { 0% { translate: 0 6px; opacity: 0; } 30% { opacity: 1; } 100% { translate: 4px -10px; opacity: 0; } }
+  /* you: the room sways and the cards swim a little */
+  body.tipsy .arena { animation: room-sway 5s ease-in-out infinite; }
+  body.drunk .arena { animation: room-sway 3.2s ease-in-out infinite; filter: saturate(1.25); }
+  @keyframes room-sway { 0%, 100% { rotate: calc(-1.2deg * var(--tipsy, 1)); translate: -4px 0; } 50% { rotate: calc(1.2deg * var(--tipsy, 1)); translate: 4px 2px; } }
+  body.drunk .seat-0 .card { animation: card-swim 2.4s ease-in-out infinite alternate; }
+  body.drunk .seat-0 .card:nth-child(2) { animation-delay: -1.2s; }
+  @keyframes card-swim { from { rotate: -4deg; translate: 0 -2px; filter: blur(0); } to { rotate: 5deg; translate: 2px 2px; filter: blur(.6px); } }
+  body.drunk .bet-dial input[type="range"] { animation: sway 1.4s ease-in-out infinite; }
+}
+body.drunk .gift-notice { color: var(--neon-pink); }

@@ -1,9 +1,9 @@
-import { PlayerMemory } from './player-memory.js?v=1512f49c5b0b';
-import { playerOutcome } from './player-outcome.js?v=1512f49c5b0b';
-import { Poker, SEATS, SEAT_NAMES } from './engine.js?v=1512f49c5b0b';
+import { PlayerMemory } from './player-memory.js?v=453e87ac70cb';
+import { playerOutcome } from './player-outcome.js?v=453e87ac70cb';
+import { Poker, SEATS, SEAT_NAMES } from './engine.js?v=453e87ac70cb';
 
-import { botObservation, chooseBotAction } from './ai.js?v=1512f49c5b0b';
-import { randomStyle, driftStyle } from './neural-policy.js?v=1512f49c5b0b';
+import { botObservation, chooseBotAction } from './ai.js?v=453e87ac70cb';
+import { randomStyle, driftStyle } from './neural-policy.js?v=453e87ac70cb';
 
 export const MAX_PLAYERS = SEATS;
 export const TURN_MS = 45000;

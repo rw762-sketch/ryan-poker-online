@@ -98,3 +98,20 @@ test('faces blink on their own rhythm and drinks have a taste', () => {
   const line = drinkLine('sour', { style: { sticky: .9 }, from: 'Ryan' }, () => .9);
   assert.ok(line.length > 0 && line.length <= 80);
 });
+
+test('five cocktails make a seat drunk, zero-proof sobers, talk slurs, play loosens', async () => {
+  const { drinkEffect, drunkLevel, slur, drunkStyle, soberUp, mumble, DRUNK_AT } = await import('../table-talk.js');
+  let d = 0;
+  for (let i = 0; i < DRUNK_AT; i++) d = drinkEffect(d, 'martini', 'Cocktails');
+  assert.equal(drunkLevel(d), 1);
+  assert.ok(drunkLevel(drinkEffect(d, 'tea', 'Zero-proof')) < 1);
+  assert.ok(soberUp(d) < d);
+  assert.equal(slur('Nice hand', 0), 'Nice hand');
+  const slurred = slur('Nice hand, sir.', 1, seededRandom(2));
+  assert.notEqual(slurred, 'Nice hand, sir.');
+  assert.ok(slurred.length <= 80);
+  const sober = { tight: .7, aggressive: .3, sticky: .4, skill: .9, sloppy: .1, risk: .5 };
+  const drunk = drunkStyle(sober, 1);
+  assert.ok(drunk.tight < sober.tight && drunk.aggressive > sober.aggressive && drunk.skill < sober.skill && drunk.sloppy > sober.sloppy);
+  assert.ok(mumble(seededRandom(3)).length > 0);
+});

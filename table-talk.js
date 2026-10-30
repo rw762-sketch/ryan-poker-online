@@ -127,3 +127,44 @@ export function drinkLine(taste, ctx, rng = Math.random) {
   if (chance(v === 'dry' ? .45 : .25, rng)) return '';
   return finish(pick(lines, rng).replace('{from}', ctx.from || 'friend'), ctx.style || {}, rng);
 }
+
+// ---- Drinks go to your head ----
+// Five cocktails and a seat is drunk; a zero-proof drink sobers you up a little.
+export const DRUNK_AT = 5;
+export const drunkLevel = drinks => Math.min(1, Math.max(0, (drinks - 2) / (DRUNK_AT - 2)));
+export function drinkEffect(drinks, drink, group) {
+  if (group === 'Cocktails') return drinks + 1;
+  return Math.max(0, drinks - 2);
+}
+// Sober up a little every hand.
+export const soberUp = drinks => Math.max(0, drinks - .4);
+// Slur a line in proportion to how drunk the speaker is. Deterministic given rng.
+export function slur(text, level, rng = Math.random) {
+  if (level <= 0 || !text) return text;
+  let out = text.replace(/s/g, m => rng() < level * .8 ? 'sh' : m).replace(/S/g, m => rng() < level * .8 ? 'Sh' : m);
+  out = out.replace(/([aeiou])/g, (m, v) => rng() < level * .15 ? v + v : m);
+  if (rng() < level * .6) out = out.replace(/[.!]?$/, ' *hic*');
+  if (level >= .99 && rng() < .3) out = out.toLowerCase();
+  return out.slice(0, 80);
+}
+// How a drunk bot plays: looser, braver, sloppier, slower to think straight.
+export function drunkStyle(style, level) {
+  if (!style || level <= 0) return style;
+  const clamp = v => Math.min(1, Math.max(0, v));
+  return { ...style, tight: clamp(style.tight - .35 * level), aggressive: clamp(style.aggressive + .3 * level), sticky: clamp(style.sticky + .25 * level),
+    skill: clamp(style.skill - .4 * level), sloppy: clamp((style.sloppy || 0) + .4 * level), risk: clamp((style.risk ?? .5) + .3 * level), bluffy: clamp((style.bluffy || 0) + .3 * level) };
+}
+const DRUNK_LINES = { cocky: ['I’m fine. I’m FINE.', 'Everything is a bluff now.', 'Who shuffled the room?'], dry: ['Room’s spinning. Deal.', 'One more. For balance.'],
+  chatty: ['I love this table. I love all of you.', 'Is it my turn? It’s my turn.', 'Lokwey, you’re a beautiful machine.'], tilted: ['Nothing matters. All in.', 'The cards owe me.'], easy: ['Whoa. Okay.', 'Table’s a bit wobbly.'] };
+export function drunkLine(ctx, rng = Math.random) {
+  const v = voice(ctx.style);
+  return slur(pick(DRUNK_LINES[v], rng), 1, rng);
+}
+// Drunk seats mumble now and then, to nobody in particular.
+const MUMBLES = ['the river is a lie', 'who moved the pot', 'I had aces once', 'is this hand still going', 'my chips are so shiny',
+  'Lokwey are you real', 'nobody fold I’m not ready', 'what’s a flush again', 'I’m playing great tonight', 'deal me in, I’m in, am I in',
+  'the blinds keep moving', 'you’re all my best friends', 'one more hand then bed', 'I can see four cards', 'shuffle me', 'is the table tilted or is it me',
+  'raise. no. call. no.', 'I’d like a sandwich', 'the felt is so soft', 'somebody call the dealer, oh he’s here'];
+export function mumble(rng = Math.random) {
+  return slur(pick(MUMBLES, rng), .7 + rng() * .3, rng);
+}
