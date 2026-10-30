@@ -1,20 +1,23 @@
-import { playerOutcome } from './player-outcome.js?v=2972c8b36739';
-import { celebrateTable } from './celebration.js?v=2972c8b36739';
-import { gtoThinkTime } from './gto.js?v=2972c8b36739';
-import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=2972c8b36739';
-import { PlayerMemory } from './player-memory.js?v=2972c8b36739';
-import { Poker, evaluate, labels, SEATS } from './engine.js?v=2972c8b36739';
-import { tableSnapshot, animateTable } from './motion.js?v=2972c8b36739';
-import { LobbyClient, ServerRoom } from './server-room.js?v=2972c8b36739';
-import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=2972c8b36739';
-import { bindLobby } from './lobby.js?v=2972c8b36739';
-import { OnlineRoom } from './multiplayer.js?v=2972c8b36739';
-import { readObservation } from './strategy.js?v=2972c8b36739';
-import { randomStyle, driftStyle } from './neural-policy.js?v=2972c8b36739';
-import { replyTo, reactTo } from './table-talk.js?v=2972c8b36739';
-import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=2972c8b36739';
-import { styleLabel } from './neural-policy.js?v=2972c8b36739';
-import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=2972c8b36739';
+import { playerOutcome } from './player-outcome.js?v=ac6e3e31258c';
+import { celebrateTable } from './celebration.js?v=ac6e3e31258c';
+import { gtoThinkTime } from './gto.js?v=ac6e3e31258c';
+import { DRINKS, TableGifts, validGift, cleanChat, validChat } from './table-gifts.js?v=ac6e3e31258c';
+import { PlayerMemory } from './player-memory.js?v=ac6e3e31258c';
+import { Poker, evaluate, labels, SEATS } from './engine.js?v=ac6e3e31258c';
+import { tableSnapshot, animateTable } from './motion.js?v=ac6e3e31258c';
+import { LobbyClient, ServerRoom } from './server-room.js?v=ac6e3e31258c';
+import { MULTIPLAYER_API_URL, pickServer, probeServers, serverCandidates } from './network-config.js?v=ac6e3e31258c';
+import { bindLobby } from './lobby.js?v=ac6e3e31258c';
+import { OnlineRoom } from './multiplayer.js?v=ac6e3e31258c';
+import { readObservation } from './strategy.js?v=ac6e3e31258c';
+import { randomStyle, driftStyle, styleThinkTime } from './neural-policy.js?v=ac6e3e31258c';
+import { replyTo, reactTo, drinkLine } from './table-talk.js?v=ac6e3e31258c';
+import { PRESETS, loadSettings, saveSettings, configured, llmDecision, llmChat, testConnection } from './llm-player.js?v=ac6e3e31258c';
+import { styleLabel } from './neural-policy.js?v=ac6e3e31258c';
+import { DIFFICULTIES, normalizeDifficulty, botObservation, chooseBotAction, chooseBotDecision } from './ai.js?v=ac6e3e31258c';
+import { loadTableConfig, saveTableConfig, cleanTableConfig, blindsOf, tableSummary, betPresets, stackDepth } from './table-config.js?v=ac6e3e31258c';
+import { makeDealer, dealerEvent, dealerIdle, dealerTip } from './dealer.js?v=ac6e3e31258c';
+import { startFaces, applyFaces, reactToDrink, lookAt, tasteOf } from './faces.js?v=ac6e3e31258c';
 let selectedDifficulty = 'medium';
 // GTO was folded into Hard in the picker: in paired tests Hard's engine beat it by about 1 big blind a hand.
 try { selectedDifficulty = normalizeDifficulty(localStorage.getItem('river-room-difficulty')); if (selectedDifficulty === 'gto') selectedDifficulty = 'hard'; } catch {}
@@ -24,7 +27,49 @@ const $ = id => document.getElementById(id);
 const friendsPage = document.body.classList.contains('friends-page');
 const suits = ['♠', '♥', '♣', '♦'];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
-let game = new Poker();
+startFaces();
+// ---- The house dealer ----
+let dealer = makeDealer();
+let dealerTimer = null, dealerIdleTimer = null;
+function dealerSay(line, ms = 2600) {
+  const bubble = $('dealerBubble');
+  if (!bubble || !line) return;
+  bubble.textContent = line; bubble.hidden = false;
+  bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop');
+  clearTimeout(dealerTimer);
+  dealerTimer = setTimeout(() => { bubble.hidden = true; }, ms);
+}
+function dealerMood(mood, ms = 1400) {
+  const el = $('dealer');
+  if (!el) return;
+  el.dataset.mood = mood;
+  clearTimeout(el._moodTimer);
+  el._moodTimer = setTimeout(() => { el.dataset.mood = 'idle'; }, ms);
+}
+function runDealer(before, after) {
+  const el = $('dealer');
+  if (!el) return;
+  if ($('dealerName').textContent !== dealer.name) {
+    $('dealerName').textContent = dealer.name;
+    el.style.setProperty('--hue', dealer.hue);
+    el.dataset.bow = dealer.bow;
+  }
+  const event = dealerEvent(before, after, { chatty: dealer.chatty, bigBlind: room ? 20 : game.bigBlind });
+  if (!event) return;
+  dealerMood(event.mood, event.mood === 'deal' ? 900 : 1800);
+  if (event.line) setTimeout(() => dealerSay(event.line), event.key === 'shuffle' ? 150 : 350);
+  clearTimeout(dealerIdleTimer);
+  dealerIdleTimer = setTimeout(() => { if (!document.hidden && !game.done && game.turn === 0 && !room) dealerSay(dealerIdle(), 2400); }, 14000 + Math.random() * 12000);
+}
+if ($('dealerBlob')) $('dealerBlob').onclick = () => {
+  if (room) { dealerSay(['Hey!', 'Hi there.', 'Boop.'][Math.floor(Math.random() * 3)], 1500); return; }
+  if (game.players[0].stack < 2) { dealerSay('Keep your chips, friend.', 2000); return; }
+  game.players[0].stack -= 1; render();
+  dealerMood('happy', 1600); dealerSay(dealerTip(), 2200);
+};
+let tableConfig = loadTableConfig();
+const newSoloGame = () => { const [smallBlind, bigBlind] = blindsOf(tableConfig); return new Poker({ stack: tableConfig.stack, smallBlind, bigBlind }); };
+let game = newSoloGame();
 const MEMORY_KEY='river-room-player-memory-v1';
 let playerMemory;
 try { playerMemory=new PlayerMemory(JSON.parse(localStorage.getItem(MEMORY_KEY))); } catch { playerMemory=new PlayerMemory(); }
@@ -35,7 +80,7 @@ function soloAction(action,amount) {
   const observed=playerMemory.capture(game,action,amount);
   if(!game.act(action,amount))return false;
   playerMemory.record(observed);
-  if(game.done){playerMemory.finish();savePlayerMemory();reactToHand();
+  if(game.done){playerMemory.finish();savePlayerMemory();reactToHand();maybeBotRound();
     botStyles=botStyles.map((style,i)=>{ const award=(game.awards||[]).find(a=>a.seat===i); return i?driftStyle(style,award?award.profit:-game.players[i].total):style; });}
   return true;
 }
@@ -77,6 +122,7 @@ function render() {
   nextFrame.outcome = room ? v.outcome : playerOutcome(v, 0);
   animateTable(lastFrame, nextFrame);
   celebrateTable(lastFrame, nextFrame);
+  runDealer(lastFrame, nextFrame);
   lastFrame = nextFrame;
   renderRoom();
 }
@@ -138,6 +184,7 @@ function renderTable(v) {
   $('log').innerHTML = v.logs.map(line => `<li>${escape(line)}</li>`).join('');
   placeTalk(false);
   placeWhy(false);
+  applyFaces();
   const player = v.players[0];
   $('handName').textContent = v.board.length >= 3 && !player.folded && player.cards.length === 2
     ? labels[evaluate([...player.cards, ...v.board])[0]] : 'Your two cards are private.';
@@ -174,7 +221,7 @@ function renderTable(v) {
       else $('handName').textContent = eligible < 2 ? 'Need two connected players with chips. Create a new room to reset stacks.' : 'Waiting for the host to deal the next hand.';
     } else {
       const canContinue = player.stack > 0 && v.players.filter(p => p.stack > 0).length > 1;
-      button(canContinue ? 'Next hand' : 'Play again', () => { if (!canContinue) game = new Poker(); start(); }, 'primary');
+      button(canContinue ? 'Next hand' : 'Play again', () => { if (!canContinue) game = newSoloGame(); start(); }, 'primary');
     }
   } else if (v.turn === 0) {
     const o = options();
@@ -186,21 +233,44 @@ function renderTable(v) {
     if (o.canRaise) {
       let amount = o.min;
       const raise = button(`Raise to ${amount}`, () => act('raise', amount), 'primary');
-      const label = document.createElement('label');
-      label.className = 'raise-control';
-      label.textContent = 'Raise to ';
-      const input = document.createElement('input');
-      Object.assign(input, { type:'range', min:o.min, max:o.max, step:1, value:amount });
-      input.setAttribute('aria-label', 'Raise total');
-      const output = document.createElement('output');
-      output.textContent = amount;
-      input.oninput = () => {
-        amount = +input.value;
-        output.textContent = amount;
-        raise.textContent = amount === o.max ? `All in ${amount}` : `Raise to ${amount}`;
+      // Bet sizing: quick sizes, a slider, and an exact total you can type.
+      const sizer = document.createElement('div');
+      sizer.className = 'bet-sizer';
+      const presets = document.createElement('div');
+      presets.className = 'bet-presets';
+      presets.setAttribute('role', 'group'); presets.setAttribute('aria-label', 'Quick bet sizes');
+      const slider = Object.assign(document.createElement('input'), { type:'range', min:o.min, max:o.max, step:1, value:amount });
+      slider.setAttribute('aria-label', 'Total bet');
+      const exact = Object.assign(document.createElement('input'), { type:'number', min:o.min, max:o.max, step:1, value:amount, inputMode:'numeric' });
+      exact.setAttribute('aria-label', 'Total bet, exact amount');
+      const note = document.createElement('p');
+      note.className = 'bet-note';
+      const set = (value, from) => {
+        amount = Math.min(o.max, Math.max(o.min, Math.round(Number(value) || o.min)));
+        if (from !== slider) slider.value = amount;
+        if (from !== exact) exact.value = amount;
+        const more = amount - (player.bet || 0);
+        raise.textContent = amount === o.max ? `All in ${amount.toLocaleString()}` : `${o.owed ? 'Raise' : 'Bet'} to ${amount.toLocaleString()}`;
+        note.textContent = `Total bet ${amount.toLocaleString()} · ${more.toLocaleString()} more from your ${player.stack.toLocaleString()} · pot after ${(v.pot + more).toLocaleString()}`;
+        presets.querySelectorAll('button').forEach(b => b.classList.toggle('on', Number(b.dataset.amount) === amount));
       };
-      label.append(input, output);
-      $('actions').append(label);
+      for (const { label, amount: size } of betPresets({ pot:v.pot, current:v.current ?? Math.max(0, ...v.players.map(p => p.bet || 0)), call:o.call, min:o.min, max:o.max, smallBlind: room ? 10 : game.smallBlind })) {
+        const quick = Object.assign(document.createElement('button'), { type:'button', textContent:label, className:'bet-preset' });
+        quick.dataset.amount = size; quick.title = `Total bet ${size.toLocaleString()}`;
+        quick.onclick = () => set(size);
+        presets.append(quick);
+      }
+      slider.oninput = () => set(slider.value, slider);
+      exact.oninput = () => { if (exact.value !== '') set(exact.value, exact); };
+      exact.onchange = () => set(exact.value);
+      exact.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); set(exact.value); act('raise', amount); } };
+      const dial = document.createElement('div');
+      dial.className = 'bet-dial';
+      const tag = Object.assign(document.createElement('span'), { className:'bet-tag', textContent:'Total bet' });
+      dial.append(slider, tag, exact);
+      sizer.append(presets, dial, note);
+      $('actions').append(sizer);
+      set(amount);
     }
   } else {
     $('turnTitle').textContent = player.folded ? 'WATCHING THE HAND' : 'AT THE TABLE';
@@ -242,10 +312,8 @@ function deal() {
 function thinkTime() {
   if (handDifficulty === 'gto') return gtoThinkTime({seat:game.turn,options:game.options(),pot:game.pot});
   // Bigger pots and facing bets take a little longer, like a person would.
-  const facing = game.options().owed > 0 ? 350 : 0;
-  // Mostly quick, sometimes a long tank, the way people actually play.
-  const tank = Math.random() < .07 ? 1400 + Math.random() * 2200 : 0;
-  return 550 + Math.random() * 900 + facing + Math.min(700, game.pot / 3) + tank;
+  // Each bot has its own pace; patient ones tank more, the way people actually play.
+  return styleThinkTime(botStyles[game.turn], { facing: game.options().owed > 0, pot: game.pot });
 }
 // What the bots have noticed about you this session (public actions only).
 const userStats = { hands: 0, entered: 0, raises: 0, calls: 0, folds: 0, shoves: 0, seenHand: 0 };
@@ -378,7 +446,7 @@ function explainDecision(decision, obs) {
   const pct = x => `${Math.round(x * 100)}%`;
   if (a.model === 'neural') {
     const values = Object.entries(a.values || {}).map(([k, v]) => `${({ fold:'fold', call: obs.options.owed ? 'call' : 'check', half:'½-pot raise', pot:'pot raise', allin:'all in' })[k]} ${v > 0 ? '+' : ''}${v} BB`).join(' · ');
-    return { by: `Neural · ${a.persona}`, text: `I gave my hand about ${pct(a.equity)} to win. My guesses per move: ${values}.${a.slipped ? ' Went with my gut this time.' : ''}` };
+    return { by: 'Neural', text: `I gave my hand about ${pct(a.equity)} to win. My guesses per move: ${values}.${a.slipped ? ' Went with my gut this time.' : ''}` };
   }
   if (a.equity !== undefined && a.equity !== null) return { by: 'Hand-built bot', text: `${a.reason || 'Weighed the price against my chances.'} Estimated chance to win: ${pct(a.equity)}.` };
   return { by: 'Bot', text: a.reason || 'Played it by feel.' };
@@ -455,33 +523,83 @@ function schedule() {
 }
 // Table size: which seats are in play for 2–6 players, spaced evenly around the felt.
 const SEAT_LAYOUTS = { 2:[0,3], 3:[0,2,4], 4:[0,1,3,5], 5:[0,1,2,4,5], 6:[0,1,2,3,4,5] };
-let tableSize = 6;
-try { tableSize = Math.min(6, Math.max(2, Number(localStorage.getItem('river-room-seats')) || 6)); } catch {}
+let tableSize = tableConfig.seats;
 function applyTableSize() {
   const seats = SEAT_LAYOUTS[tableSize] || SEAT_LAYOUTS[6];
   game.players.forEach((p, i) => {
     if (!i) return;
     if (!seats.includes(i)) { if (!p.sittingOut) { p.parkedStack = p.stack; p.sittingOut = true; } p.stack = 0; }
-    else if (p.sittingOut) { p.stack = p.parkedStack || 1000; p.sittingOut = false; }
+    else if (p.sittingOut) { p.stack = p.parkedStack || tableConfig.stack; p.sittingOut = false; }
   });
 }
-document.querySelectorAll('input[name="tableSize"]').forEach(input => {
-  input.checked = Number(input.value) === tableSize;
-  input.addEventListener('change', () => {
-    tableSize = Number(input.value);
-    try { localStorage.setItem('river-room-seats', String(tableSize)); } catch {}
-    if (!room && game.done) { applyTableSize(); render(); }
-    renderDifficulty();
-  });
-});
-function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; if (!room) applyTableSize(); game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
+// Blinds and seat count take effect when the next hand is dealt.
+function applyTableConfig() {
+  tableSize = tableConfig.seats;
+  [game.smallBlind, game.bigBlind] = blindsOf(tableConfig);
+  applyTableSize();
+}
+function renderTableSummary() {
+  if (!$('tableSummary')) return;
+  const live = room ? null : game;
+  $('tableSummary').textContent = tableSummary(tableConfig);
+  $('blindsLabel').textContent = live ? `${live.smallBlind} / ${live.bigBlind}` : '10 / 20';
+  const count = live ? live.players.filter(p => !p.sittingOut).length : SEATS;
+  $('tableEyebrow').textContent = `${['', '', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'][count] || 'SIX'}-PLAYER TABLE`;
+}
+function readTableForm() {
+  const form = $('tableForm');
+  return cleanTableConfig({ seats: form.tableSize.value, blinds: form.blinds.value, stack: form.startStack.value });
+}
+function previewTable() {
+  const next = readTableForm();
+  const [sb, bb] = blindsOf(next);
+  const depth = stackDepth(next);
+  const feel = depth <= 25 ? 'short and wild: lots of all-ins' : depth <= 60 ? 'a classic game' : depth <= 120 ? 'deep: room to play every street' : 'very deep: slow, patient poker';
+  $('tablePreview').textContent = `${next.seats} players, ${sb}/${bb} blinds, ${next.stack.toLocaleString()} chips each. That is ${depth} big blinds, ${feel}.`;
+}
+function openTableDialog() {
+  const form = $('tableForm');
+  form.tableSize.value = String(tableConfig.seats);
+  form.blinds.value = tableConfig.blinds;
+  form.startStack.value = String(tableConfig.stack);
+  previewTable();
+  $('tableDialog').showModal();
+}
+function useTableSettings(fresh) {
+  tableConfig = readTableForm();
+  saveTableConfig(tableConfig);
+  $('tableDialog').close();
+  if (fresh) {
+    clearTimeout(timer);
+    botStyles = Array.from({ length:SEATS }, () => randomStyle());
+    game = newSoloGame();
+    start();
+  } else if (game.done) { applyTableConfig(); render(); }
+  renderTableSummary(); renderDifficulty();
+}
+if ($('customizeTable')) {
+  $('customizeTable').onclick = openTableDialog;
+  $('closeTable').onclick = () => $('tableDialog').close();
+  $('tableForm').addEventListener('change', previewTable);
+  $('tableForm').onsubmit = event => { event.preventDefault(); useTableSettings(true); };
+  $('tableNextHand').onclick = () => useTableSettings(false);
+}
+function start() { clearTimeout(timer); lastFrame = null; handDifficulty = selectedDifficulty; if (!room) applyTableConfig(); game.start(); playerMemory.begin(game); if(game.done){playerMemory.finish();savePlayerMemory();} render(); schedule(); }
+function pendingTableNote() {
+  if (room) return '';
+  const seats = (SEAT_LAYOUTS[tableConfig.seats] || []).length !== game.players.filter(p => !p.sittingOut).length;
+  const [, bb] = blindsOf(tableConfig);
+  const blinds = bb !== game.bigBlind;
+  return seats || blinds ? ` · ${[seats && `${tableConfig.seats} seats`, blinds && `${tableConfig.blinds} blinds`].filter(Boolean).join(' and ')} from the next hand` : '';
+}
 function renderDifficulty() {
+  renderTableSummary();
   $('difficultyPanel').hidden = !!room;
   $('aiMemoryPanel').hidden = !!room || handDifficulty === 'gto';
   document.querySelectorAll('input[name="difficulty"]').forEach(input => { input.checked = input.value === selectedDifficulty; });
   $('difficultyStatus').textContent = selectedDifficulty !== handDifficulty
     ? `${DIFFICULTIES[handDifficulty].name} this hand · ${DIFFICULTIES[selectedDifficulty].name} starts next hand`
-    : `${DIFFICULTIES[selectedDifficulty].name} opponents · ${DIFFICULTIES[selectedDifficulty].description}${(SEAT_LAYOUTS[tableSize] || []).length !== game.players.filter((p, i) => !p.sittingOut).length ? ` · ${tableSize} seats from the next hand` : ''}`
+    : `${DIFFICULTIES[selectedDifficulty].name} opponents · ${DIFFICULTIES[selectedDifficulty].description}${pendingTableNote()}`
       + (selectedDifficulty === 'live' && liveOffline ? ' The Live AI server isn’t answering, so the Neural bots are playing for now.' : '');
 }
 document.querySelectorAll('input[name="difficulty"]').forEach(input => input.addEventListener('change', () => {
@@ -518,10 +636,17 @@ function receiveGift(gift) {
   const players = room?.view?.players ?? game.players;
   if (!players[gift.from] || !players[gift.to]) return;
   const drink = DRINKS[gift.drink];
-  $('giftNotice').textContent = `${players[gift.from].name} sent ${players[gift.to].name} ${drink.label.toLowerCase()}. Cheers!`;
-  const target = document.querySelector(`.seat-${(gift.to - me + SEATS) % SEATS}`);
+  const price = room ? '' : ` for $${DRINK_PRICE}`;
+  $('giftNotice').textContent = `${players[gift.from].name} bought ${players[gift.to].name} ${drink.label.toLowerCase()}${price}. Cheers!`;
+  const toSeat = (gift.to - me + SEATS) % SEATS;
+  const target = document.querySelector(`.seat-${toSeat}`);
   const source = document.querySelector(`.seat-${(gift.from - me + SEATS) % SEATS}`);
   if (!target || !source) return;
+  // The recipient looks over at whoever is sending it, then reacts when it lands.
+  lookAt(toSeat, source, target, 1150);
+  let landed = false;
+  const land = () => { if (landed) return; landed = true; afterDrink(gift, reactToDrink(toSeat, gift.drink)); };
+  setTimeout(land, 1250);
   const a = source.getBoundingClientRect(), b = target.getBoundingClientRect();
   const token = document.createElement('span');
   token.className = 'flying-drink'; token.textContent = drink.icon;
@@ -544,6 +669,7 @@ function receiveGift(gift) {
     frames.push({ transform:'translate(0, 4px) rotate(0deg) scale(1.08)', opacity:1 }, { transform:'translate(0, 0) rotate(-4deg) scale(1)', opacity:1 });
     const flight = token.animate(frames, { duration:1150, easing:'cubic-bezier(.25,.7,.3,1)' });
     flight.onfinish = () => {
+      land();
       for (let i = 0; i < 9; i++) {
         const spark = document.createElement('i');
         spark.className = 'drink-spark';
@@ -561,13 +687,69 @@ function receiveGift(gift) {
   }
   setTimeout(() => token.remove(), 3400);
 }
+// Drinks cost $1 of table chips at the solo table (1 chip = $1). Online rooms keep
+// them free because chips there belong to the host's game.
+const DRINK_PRICE = 1;
+function chargeDrink(seat) {
+  if (room) return true;
+  const p = game.players[seat];
+  if (!p || p.sittingOut || p.stack < DRINK_PRICE + 1) return false;
+  p.stack -= DRINK_PRICE;
+  return true;
+}
+const sayLater = (seat, line, ms) => line && setTimeout(() => showTalk(seat, line), ms);
+function afterDrink(gift, taste) {
+  if (room || gift.to === 0) return;
+  const style = botStyles[gift.to];
+  // A drink takes the edge off; tea most of all.
+  if (style) botStyles[gift.to] = { ...style, tilt: style.tilt * (taste === 'calm' ? .3 : .6) };
+  const from = gift.from === 0 ? (game.players[0].name === 'You' ? 'friend' : game.players[0].name) : game.players[gift.from].name;
+  sayLater(gift.to, drinkLine(taste, { style: botStyles[gift.to], from }, Math.random), 1500 + Math.random() * 700);
+  // Sometimes they return the favour, to you or whoever bought it.
+  if (Math.random() < (gift.from === 0 ? .3 : .15)) setTimeout(() => botBuysDrink(gift.to, gift.from), 5000 + Math.random() * 6000);
+}
+// What a bot likes to order, nudged by its style.
+function botFavourite(style = {}, random = Math.random) {
+  const pools = [
+    [style.aggressive > .6, ['negroni', 'oldfashioned', 'espresso']],
+    [style.tight > .6, ['tea', 'coffee', 'martini']],
+    [style.sticky > .6, ['pinacolada', 'mocktail', 'mojito', 'spritz']],
+    [true, Object.keys(DRINKS)],
+  ];
+  const pool = pools.find(([ok]) => ok && random() < .7)?.[1] || Object.keys(DRINKS);
+  return pool[Math.floor(random() * pool.length)];
+}
+function botBuysDrink(from, to, line = '') {
+  if (room || from === to || !game.players[from] || !game.players[to] || game.players[to].sittingOut) return;
+  const live = game.players.map(p => ({ online: !p.sittingOut }));
+  try {
+    const gift = soloGifts.create(from, to, botFavourite(to ? botStyles[to] : botStyles[from]), live);
+    if (!chargeDrink(from)) return;
+    render();
+    receiveGift(gift);
+    if (line) showTalk(from, line);
+  } catch {}
+}
+// Between hands a bot now and then buys someone a drink; big winners buy rounds.
+function maybeBotRound() {
+  if (room || !game.done) return;
+  const bots = game.players.flatMap((p, i) => i && !p.sittingOut && p.stack > 1 ? [i] : []);
+  if (!bots.length) return;
+  const winner = (game.awards || []).filter(a => a.seat && a.profit >= 400)[0]?.seat;
+  const buyer = winner && Math.random() < .35 ? winner : Math.random() < .1 ? bots[Math.floor(Math.random() * bots.length)] : null;
+  if (!buyer) return;
+  const others = game.players.flatMap((p, i) => i !== buyer && !p.sittingOut ? [i] : []);
+  const to = Math.random() < .5 ? 0 : others[Math.floor(Math.random() * others.length)];
+  const line = buyer === winner ? ['Drinks on me!', 'Next one’s on me.', 'Celebration round.'][Math.floor(Math.random() * 3)] : '';
+  setTimeout(() => { if (game.done) botBuysDrink(buyer, to, line); }, 2600 + Math.random() * 2000);
+}
 let drinkRecipient = null;
 let drinkRoom = null;
 let selectedDrink = 'martini';
 function updateDrinkButton() {
   const selected = $('drinksForm').querySelector('input[name="drink"]:checked');
   if (selected) selectedDrink = selected.value;
-  $('sendDrink').textContent = `Send ${DRINKS[selectedDrink].label}`;
+  $('sendDrink').textContent = `Send ${DRINKS[selectedDrink].label}${room ? '' : ` · $${DRINK_PRICE}`}`;
 }
 function openDrinks(to) {
   const players = room?.view?.players ?? game.players;
@@ -578,6 +760,7 @@ function openDrinks(to) {
   $('drinkRecipientAvatar').textContent = player.name[0];
   $('drinkMenu').innerHTML = ['Cocktails','Zero-proof'].map(group => `<fieldset class="drink-collection"><legend>${group}</legend><div class="drink-grid">${Object.entries(DRINKS).filter(([,d]) => d.group === group).map(([id,d]) => `<label class="drink-card"><input type="radio" name="drink" value="${id}" ${id === selectedDrink ? 'checked' : ''}><span class="drink-art" aria-hidden="true">${d.icon}</span><span class="drink-name">${d.label}</span><span class="drink-note">${d.note}</span><span class="drink-check" aria-hidden="true">✓</span></label>`).join('')}</div></fieldset>`).join('');
   $('drinkError').textContent = '';
+  $('drinkPrice').textContent = room ? 'Virtual drinks · free in online rooms' : `Each drink costs $${DRINK_PRICE} from your chips · you have ${game.players[0].stack.toLocaleString()}`;
   updateDrinkButton();
   $('drinksDialog').showModal();
 }
@@ -595,7 +778,11 @@ $('drinksForm').onsubmit = event => {
   try {
     if (room !== drinkRoom) throw Error('The table changed. Choose a player again.');
     if (room) room.buyDrink(drinkRecipient, selectedDrink);
-    else receiveGift(soloGifts.create(0, drinkRecipient, selectedDrink, game.players.map(() => ({online:true}))));
+    else {
+      if (game.players[0].stack < DRINK_PRICE + 1) throw Error('You need a few chips left to buy a drink.');
+      const gift = soloGifts.create(0, drinkRecipient, selectedDrink, game.players.map(p => ({ online: !p.sittingOut })));
+      chargeDrink(0); render(); receiveGift(gift);
+    }
     $('drinksDialog').close();
   } catch (error) { $('drinkError').textContent = error.message; }
 };
@@ -727,14 +914,15 @@ if (friendsPage) {
   };
 }
 $('restart').onclick = () => {
-  if (!confirm(room ? (room.host ? 'Close this room for everyone?' : 'Leave this room?') : 'Start a new table with 1,000 chips each?')) return;
+  if (!confirm(room ? (room.host ? 'Close this room for everyone?' : 'Leave this room?') : `Start a new table with ${tableConfig.stack.toLocaleString()} chips each?`)) return;
   room?.close();
   room = null;
   botStyles = Array.from({ length:SEATS }, () => randomStyle());
+  dealer = makeDealer();
   clearTimeout(pendingTimer);
   pendingAction = false;
   connectionMessage = '';
-  game = new Poker();
+  game = newSoloGame();
   history.replaceState(null, '', location.pathname + location.search);
   if (friendsPage) { renderRoom(); openLobby(); } else start();
 };

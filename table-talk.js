@@ -107,3 +107,23 @@ export function reactTo(kind, ctx, rng = Math.random) {
   if (!table || chance(.45, rng)) return '';
   return finish(fill(pick(table[v], rng), ctx), ctx.style || {}, rng);
 }
+
+// Saying thanks for a drink, flavoured by what it was. taste comes from faces.js.
+const DRINK_LINES = {
+  cheers: { cocky: ['Now we’re talking.', 'Knew you liked me.'], dry: ['Thanks. Cheers.', 'Appreciated.'],
+    chatty: ['Aww, cheers {from}!', 'Best table ever, honestly.', 'You remembered my order!'], tilted: ['Okay. That helps.', 'Needed this.'], easy: ['Cheers!', 'Thank you!'] },
+  wired: { cocky: ['Caffeine. Bad news for all of you.', 'Now I see everything.'], dry: ['Good. Awake now.', 'Sharp.'],
+    chatty: ['I can hear colours now.', 'OKAY I’m awake, deal deal deal!'], tilted: ['Fine. Focus.', 'Coffee won’t fix the river.'], easy: ['Ooh, perfect.', 'Wide awake.'] },
+  calm: { cocky: ['Calm and deadly.', 'Zen mode.'], dry: ['Nice and calm.', 'Good choice.'],
+    chatty: ['Ahh, cosy. Thank you!', 'Tea at a poker table, love it.'], tilted: ['Okay. Breathing.', 'Deep breath. Thanks.'], easy: ['So calming.', 'Lovely.'] },
+  sour: { cocky: ['Sour. Like your last bluff.', 'Mm! Strong.'], dry: ['Tart.', 'Bit sour. Good.'],
+    chatty: ['Whoa, sour! 😖 love it', 'My face just folded.'], tilted: ['Even the drink is bitter.', 'Fitting.'], easy: ['Sour! Nice.', 'Zingy.'] },
+  cool: { cocky: ['Smooth. Like me.', 'A drink for a closer.'], dry: ['Classic.', 'Neat. Thanks.'],
+    chatty: ['Ooh, fancy!', 'I feel like a movie villain now.'], tilted: ['Strong. Good.', 'Just what I needed.'], easy: ['Smooth.', 'Classy, thanks.'] },
+};
+export function drinkLine(taste, ctx, rng = Math.random) {
+  const v = voice(ctx.style);
+  const lines = (DRINK_LINES[taste] || DRINK_LINES.cheers)[v];
+  if (chance(v === 'dry' ? .45 : .25, rng)) return '';
+  return finish(pick(lines, rng).replace('{from}', ctx.from || 'friend'), ctx.style || {}, rng);
+}

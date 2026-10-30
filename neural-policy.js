@@ -2,10 +2,10 @@
 // (scripts/neural-data.mjs + scripts/neural-train.py), estimates how many big
 // blinds each move is worth from public information and the bot's own cards.
 // Personalities change how the bot chooses among those estimates, not what it sees.
-import { preflopStrength, simulateEquity } from './poker-math.js?v=2972c8b36739';
-import { boardTexture, strategicAction, DEFAULT_POLICY } from './strategy.js?v=2972c8b36739';
-import { TRAINED_POLICY } from './trained-policy.js?v=2972c8b36739';
-import { NEURAL_WEIGHTS } from './neural-weights.js?v=2972c8b36739';
+import { preflopStrength, simulateEquity } from './poker-math.js?v=ac6e3e31258c';
+import { boardTexture, strategicAction, DEFAULT_POLICY } from './strategy.js?v=ac6e3e31258c';
+import { TRAINED_POLICY } from './trained-policy.js?v=ac6e3e31258c';
+import { NEURAL_WEIGHTS } from './neural-weights.js?v=ac6e3e31258c';
 
 export const NEURAL_ACTIONS = ['fold', 'call', 'half', 'pot', 'allin'];
 const BB = 20;
@@ -35,6 +35,8 @@ export function neuralFeatures(obs, equity) {
   const o = obs.options, stage = obs.board.length === 0 ? 0 : obs.board.length - 2;
   const texture = boardTexture(obs.cards, obs.board);
   const pot = Math.max(1, obs.pot);
+  // Chip amounts are measured against a 50-big-blind stack (1,000 at 10/20).
+  const unit = 50 * (obs.bigBlind || BB);
   const ranges = obs.opponentRanges || [];
   const share = name => ranges.length ? ranges.filter(r => r === name).length / ranges.length : 0;
   const spr = (obs.effectiveStack ?? obs.stack) / pot;
@@ -56,8 +58,8 @@ export function neuralFeatures(obs, equity) {
     obs.unopened ? 1 : 0, obs.limped ? 1 : 0,
     clip(obs.current / pot, 0, 3),
     o.canRaise ? 1 : 0,
-    clip(obs.stack / 1000, 0, 4),
-    clip(pot / 1000, 0, 4),
+    clip(obs.stack / unit, 0, 4),
+    clip(pot / unit, 0, 4),
     share('tight'), share('loose'), share('random'),
   ];
 }
@@ -94,7 +96,7 @@ export function actionValues(obs, { trials = 260, random = Math.random, weights 
   // equity * (pot + call) - call. Use that instead of the network's guess.
   const o = obs.options;
   if (o.owed > 0 && (o.call >= obs.stack || !o.canRaise || obs.allInFacing)) {
-    values[1] = (eq * (obs.pot + o.call) - o.call) / BB;
+    values[1] = (eq * (obs.pot + o.call) - o.call) / (obs.bigBlind || BB);
   }
   return { values, equity: eq, mask };
 }
@@ -123,9 +125,28 @@ export const SEAT_PERSONAS = [null, 'tricky', 'rock', 'maniac', 'shark', 'callin
 // point drifts a little from hand to hand, more after a painful loss.
 const lerp = (a, b, t) => a + (b - a) * t;
 const unit = random => Math.min(1, Math.max(0, (random() + random() + random()) / 3 + (random() - .5) * .35));
+// The trained network stays neutral: it only estimates what each move is worth.
+// A personality is a point in this trait space, and only changes how the bot
+// chooses among those estimates (risk appetite, habits, patience, nerves).
+export const TRAITS = Object.freeze({
+  tight: 'how many hands they play', aggressive: 'bets and raises over calls', sticky: 'hard to shake off a hand',
+  skill: 'how closely they follow the value estimates', sloppy: 'bet-size wobble',
+  risk: 'risk appetite: low is risk-averse, high is a gambler', trap: 'likes to slow-play monsters',
+  bluffy: 'loves a bluff and a float', stubborn: 'hates folding once invested', scare: 'flinches at big bets',
+  patience: 'how long they take to act', swing: 'how fast their mood and habits move', image: 'tightens up after being caught',
+});
 export function randomStyle(random = Math.random) {
   return { tight: unit(random), aggressive: unit(random), sticky: unit(random), skill: .25 + .75 * unit(random),
-    sloppy: random() * .35, tilt: 0 };
+    sloppy: random() * .35, tilt: 0,
+    risk: unit(random), trap: random() * random(), bluffy: random() * random(), stubborn: unit(random) * .8,
+    scare: random() * random(), patience: unit(random), swing: .4 + random() * 1.2, image: random() };
+}
+// Risk appetite as a utility curve over big blinds (CARA): a cautious bot values
+// a sure thing over a coin flip of the same mean; a gambler does the reverse.
+export function riskUtility(valueBB, risk = .5) {
+  const k = (.5 - risk) * .5;
+  if (Math.abs(k) < 1e-4) return valueBB;
+  return (1 - Math.exp(-k * valueBB)) / k;
 }
 export function styleLabel(style) {
   const t = style.tight > .6 ? 'tight' : style.tight < .4 ? 'loose' : 'balanced';
@@ -141,18 +162,23 @@ export function stylePersona(style) {
     temperature: lerp(1.9, 1, style.skill) * (1 + style.tilt * .5),
     slip: lerp(.09, .015, style.skill) + style.tilt * .06,
     sizing: style.sloppy,
+    traits: style,
     anchor: { ...DEFAULT_POLICY,
       openEarly: lerp(.46, .74, tight), openLate: lerp(.24, .54, tight), value: lerp(.5, .66, tight),
       defend: lerp(.07, -.06, style.sticky), aggression: lerp(.35, .95, aggressive),
-      bluff: lerp(0, .14, aggressive) * (1 - tight * .5), size: lerp(.5, .92, aggressive) },
+      bluff: Math.min(.2, lerp(0, .14, aggressive) * (1 - tight * .5) + (style.bluffy || 0) * .08), size: lerp(.5, .92, aggressive) },
   };
 }
 // Call once per finished hand. profit is this bot's net chips for the hand.
 export function driftStyle(style, profit = 0, random = Math.random) {
-  const step = () => (random() - .5) * .06;
+  const swing = style.swing || 1;
+  const step = () => (random() - .5) * .06 * swing;
   const clamp = v => Math.min(1, Math.max(0, v));
-  const tilt = clamp(style.tilt * .7 + (profit < -400 ? .5 : profit < -150 ? .2 : 0));
-  return { ...style, tight: clamp(style.tight + step()), aggressive: clamp(style.aggressive + step()), sticky: clamp(style.sticky + step()), tilt };
+  const tilt = clamp(style.tilt * (.75 - swing * .05) + (profit < -400 ? .5 : profit < -150 ? .2 : 0) * swing);
+  // Caught bluffing (lost a big pot) and image-conscious: tighten up for a while.
+  const tighten = profit < -300 && style.image > .5 ? .08 * style.image : 0;
+  return { ...style, tight: clamp(style.tight + step() + tighten), aggressive: clamp(style.aggressive + step() - tighten * .5),
+    sticky: clamp(style.sticky + step()), risk: clamp((style.risk ?? .5) + step() * .5 + (profit > 400 ? .04 : 0)), tilt };
 }
 
 function anchorIndex(obs, decision) {
@@ -170,10 +196,25 @@ export function chooseNeuralDecision(obs, { persona = 'shark', random = Math.ran
   const anchor = anchorIndex(obs, anchorMove);
   const legalCount = mask.filter(Boolean).length;
   const prior = mask.map((ok, i) => !ok ? 0 : i === anchor ? 0.72 : 0.28 / Math.max(1, legalCount - 1));
-  const logits = values.map((v, i) => v === null || !prior[i] ? -Infinity : style.lambda * Math.log(prior[i]) + v / style.temperature);
+  const t = style.traits || {};
+  const o = obs.options;
+  // Each personality bends the neutral estimates in its own way:
+  // risk appetite (utility curve), traps, floats, stubbornness and nerves.
+  const shaped = values.map((v, i) => {
+    if (v === null) return null;
+    let u = riskUtility(v, t.risk ?? .5);
+    if (i === 1 && t.trap && equity > .82 && o.canRaise) u += t.trap * 1.2;            // slow-play a monster
+    if (i === 2 && t.bluffy && equity < .4 && (obs.opponents || 1) <= 2 && o.canRaise) u += t.bluffy * .9; // a cheeky float
+    if (i === 0 && t.stubborn && obs.bet > 0) u -= t.stubborn * Math.min(1.5, (obs.bet + 1) / Math.max(1, obs.pot) * 3); // hates folding invested
+    if (i === 0 && t.scare && o.call > obs.pot * .5) u += t.scare * 1.1;              // flinches at big bets
+    if (i === 4 && t.scare) u -= t.scare * .8;
+    if (i === 4 && (t.risk ?? .5) > .75 && equity > .55) u += (t.risk - .75) * 2;    // gamblers love a shove
+    return u;
+  });
+  const logits = shaped.map((v, i) => v === null || !prior[i] ? -Infinity : style.lambda * Math.log(prior[i]) + v / style.temperature);
   // Human noise: now and then a bot plays on feel and the values barely matter.
   const slipped = random() < (style.slip ?? 0);
-  if (slipped) for (let i = 0; i < logits.length; i++) if (Number.isFinite(logits[i])) logits[i] = style.lambda * Math.log(prior[i] || 1e-9) * .3 + values[i] / (style.temperature * 6);
+  if (slipped) for (let i = 0; i < logits.length; i++) if (Number.isFinite(logits[i])) logits[i] = style.lambda * Math.log(prior[i] || 1e-9) * .3 + shaped[i] / (style.temperature * 6);
   const top = Math.max(...logits);
   const weights = logits.map(l => Number.isFinite(l) ? Math.exp(l - top) : 0);
   const total = weights.reduce((a, b) => a + b, 0);
@@ -189,5 +230,13 @@ export function chooseNeuralDecision(obs, { persona = 'shark', random = Math.ran
   }
   const ranked = values.map((v, i) => [NEURAL_ACTIONS[i], v === null ? null : Math.round(v * 10) / 10]).filter(([, v]) => v !== null);
   return { ...decision, analysis: { model: 'neural', persona: style.name, equity, values: Object.fromEntries(ranked),
-    anchor: NEURAL_ACTIONS[anchor], choice: NEURAL_ACTIONS[index], slipped } };
+    anchor: NEURAL_ACTIONS[anchor], choice: NEURAL_ACTIONS[index], slipped, risk: t.risk ?? .5 } };
+}
+
+// How long this bot sits with a decision, in ms. Patient players tank more.
+export function styleThinkTime(style = {}, { facing = false, pot = 0, random = Math.random } = {}) {
+  const patience = style.patience ?? .5;
+  const base = 400 + patience * 700 + random() * (500 + patience * 700);
+  const tank = random() < .04 + patience * .08 ? 1200 + random() * (1500 + patience * 2500) : 0;
+  return base + (facing ? 250 + patience * 300 : 0) + Math.min(700, pot / 3) + tank;
 }

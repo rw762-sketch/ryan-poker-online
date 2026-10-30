@@ -11,7 +11,7 @@ import { seededRandom, simulateEquity } from '../poker-math.js';
 import { readObservation, strategicAction, DEFAULT_POLICY } from '../strategy.js';
 import { TRAINED_POLICY } from '../trained-policy.js';
 import { chooseBotDecision } from '../ai.js';
-import { neuralFeatures, legalMask, toDecision, chooseNeuralDecision } from '../neural-policy.js';
+import { neuralFeatures, legalMask, toDecision, chooseNeuralDecision, randomStyle } from '../neural-policy.js';
 
 const STYLES = ['hard', 'medium', 'loose', 'gto', 'nit', 'aggro', 'station', 'neural', 'neural'];
 const STATION = { ...DEFAULT_POLICY, openEarly: .7, openLate: .55, defend: -.05, aggression: .35, bluff: .02, size: .5 };
@@ -30,6 +30,9 @@ export function styleAction(style, obs, rng, trials = 36) {
     case 'hardgto': return obs.opponents === 1 && obs.board.length ? chooseBotDecision(obs, 'gto', rng) : strategicAction(obs, TRAINED_POLICY, rng, trials);
     case 'neural': return chooseNeuralDecision(obs, { persona: PERSONA_KEYS[Math.floor(rng() * PERSONA_KEYS.length)], random: rng, trials: Math.max(48, trials) });
     default:
+      // 'neural-random' draws a fresh random personality for every decision (an
+      // average over the whole trait space); 'neural-<persona>' uses a fixed one.
+      if (style === 'neural-random') return chooseNeuralDecision(obs, { persona: randomStyle(rng), random: rng, trials: Math.max(48, trials) });
       if (style.startsWith('neural-')) return chooseNeuralDecision(obs, { persona: style.slice(7), random: rng, trials: Math.max(48, trials) });
       return chooseBotDecision(obs, 'easy', rng);
   }

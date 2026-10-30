@@ -95,7 +95,8 @@ export function animateTable(before, after) {
   const seats = [...document.querySelectorAll('.seat')];
 
   if (newHand) {
-    const origin = center(pot);
+    const dealerBlob = document.getElementById('dealerBlob');
+    const origin = center(dealerBlob || pot);
     seats.forEach((seat, index) => {
       seat.querySelectorAll('.card').forEach((card, cardIndex) => {
         const destination = center(card);

@@ -1,4 +1,4 @@
-import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=2972c8b36739';
+import { preflopStrength, simulateEquity, rankHand } from './poker-math.js?v=ac6e3e31258c';
 
 export const DEFAULT_POLICY = { openEarly:.64, openLate:.42, defend:.035, value:.61, aggression:.72, bluff:.055, size:.65 };
 export function positionOf(game, seat) {
@@ -26,8 +26,9 @@ export function readObservation(game) {
   const me = game.players[game.turn];
   const others = game.players.filter((p, i) => i !== game.turn && !p.folded);
   const opponents = others.length;
-  const raised = game.current > (game.board.length ? 0 : 20);
-  const pressure = game.options().call / Math.max(20, game.pot);
+  const bb = game.bigBlind || 20;
+  const raised = game.current > (game.board.length ? 0 : bb);
+  const pressure = game.options().call / Math.max(bb, game.pot);
   // Range profiles are model assumptions inferred from public betting, not hidden hands.
   const opponentRanges = others.map(p => {
     // An all-in shove is only as strong as that player's shoving habit: people
@@ -36,15 +37,15 @@ export function readObservation(game) {
       const rate = (p.shoves || 0) / ((p.dealt || 0) + 6);
       return rate > .3 ? 'random' : rate > .15 ? 'loose' : 'standard';
     }
-    if (/^Raise/.test(p.action)) return pressure > .5 || (game.current >= 160 && pressure >= .25) ? 'tight' : 'standard';
+    if (/^Raise/.test(p.action)) return pressure > .5 || (game.current >= 8 * bb && pressure >= .25) ? 'tight' : 'standard';
     if (raised && p.bet === game.current) return 'standard';
-    return game.board.length || p.total > 20 ? 'loose' : 'random';
+    return game.board.length || p.total > bb ? 'loose' : 'random';
   });
   return {
     cards:me.cards.map(c => ({ ...c })), board:game.board.map(c => ({ ...c })),
     pot:game.pot, stack:me.stack, bet:me.bet, current:game.current,
     opponents, opponentRanges, position:positionOf(game, game.turn),
-    bigBlind:20, unopened:!game.board.length && game.current <= 20,
+    bigBlind:game.bigBlind || 20, unopened:!game.board.length && game.current <= (game.bigBlind || 20),
     limped:!game.board.length && others.some(p=>/^Call/.test(p.action)),
     effectiveStack:Math.min(me.stack, Math.max(...others.map(p => p.stack))),
     options:{ ...game.options() },
